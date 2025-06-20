@@ -104,8 +104,13 @@ void main() async {
 
 class StaticQRChargeSlip extends StatefulWidget {
   final Map<String, dynamic> transactionData;
+  final bool showTxnIdRow; // New parameter
 
-  const StaticQRChargeSlip({Key? key, required this.transactionData}) : super(key: key);
+  const StaticQRChargeSlip({
+    Key? key,
+    required this.transactionData,
+    this.showTxnIdRow = true, // Default to true
+  }) : super(key: key);
 
   @override
   _StaticQRChargeSlipState createState() => _StaticQRChargeSlipState();
@@ -117,7 +122,11 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
   @override
   Widget build(BuildContext context) {
     // Safely extract values with fallbacks
-    final amount = widget.transactionData['transactionAmount']?.replaceAll('₹', '') ?? '0.00';
+    // final amount = widget.transactionData['transactionAmount']?.replaceAll('₹', '') ?? '0.00'; // Old way
+    final String rawAmountStr = widget.transactionData['transactionAmount']?.toString().replaceAll('₹', '') ?? '0';
+    final double amountValue = double.tryParse(rawAmountStr) ?? 0.0;
+    final String formattedDisplayAmount = amountValue.toStringAsFixed(2);
+
     final timestamp = widget.transactionData['transactionTimestamp'] ?.toString() ?? 'Unknown Time';
     final txnId = widget.transactionData['merchantTransactionId'] ?? 'N/A';
     final customerVpa = widget.transactionData['customerVpa'] ?? 'N/A';
@@ -203,7 +212,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
                         child: RepaintBoundary(
                           key: _receiptKey,
                           child: _buildReceiptCard(
-                            amount: amount,
+                            amount: formattedDisplayAmount, // Use the new formatted amount
                             timestamp: timestamp,
                             txnId: txnId,
                             customerVpa: customerVpa,
@@ -232,6 +241,11 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
     required String customerVpa,
     required String creditVpa,
   }) {
+    // Safely extract and parse the amount
+    final String rawAmountStr = widget.transactionData['transactionAmount']?.toString().replaceAll('₹', '') ?? '0';
+    final double amountValue = double.tryParse(rawAmountStr) ?? 0.0;
+    final String formattedDisplayAmount = amountValue.toStringAsFixed(2);
+
     const double cardPadding = 26.0;
 
     String formattedDate = '';
@@ -292,7 +306,8 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
               // Transaction details
               _receiptRow("DATE", formattedDate),
               _receiptRow("TIME", formattedTime),
-              _receiptRow("TXN ID", txnId),
+              if (widget.showTxnIdRow) // Conditional rendering
+                _receiptRow("TXN ID", txnId),
 
               const SizedBox(height: 20),
 
@@ -306,7 +321,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
                 ),
               ),
               Text(
-                "₹$amount",
+                "₹$formattedDisplayAmount",
                 style: const TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
@@ -1297,12 +1312,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 
   String formatCurrency(num amount) {
-    if (amount >= 100000) {
-      return '₹${(amount / 100000).toStringAsFixed(2)} L';
-    } else if (amount >= 1000) {
-      return '₹${(amount / 1000).toStringAsFixed(2)} K';
+    if (amount < 100000) {
+      return '₹${(amount * 100).round()}';
     } else {
-      return '₹${amount.toStringAsFixed(2)}';
+      double lakhValue = amount / 100000;
+      String formattedLakhValue = lakhValue.toStringAsFixed(1);
+      if (formattedLakhValue.endsWith('.0')) {
+        formattedLakhValue = formattedLakhValue.substring(0, formattedLakhValue.length - 2);
+      }
+      return '₹$formattedLakhValue Lakhs';
     }
   }
 
@@ -1901,6 +1919,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final tx = qrTransactions[i] as Map<String, dynamic>;
       final status = _getQRTransactionStatus(tx['gatewayResponseCode'] ?? 'Unknown');
 
+      // Only use merchantTransactionId from tx object.
+      final String desiredTxnId = tx['merchantTransactionId']?.toString() ?? '';
+
       combinedTransactions.add({
         "id": tx['customerVpa']?.toString() ?? '',
         "amount": formatCurrency(double.parse(tx['transactionAmount']?.toString() ?? '0')),
@@ -1908,9 +1929,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         "time": _formatTimestamp(tx['transactionTimestamp']?.toString() ?? ''),
         "logo": "assets/qr.png",
         "type": "QR",
-        "rrn": tx['rRNumber']?.toString() ?? '',
+        // Use desiredTxnId (from merchantTransactionId only) or 'N/A'
+        "rrn": desiredTxnId.isEmpty ? 'N/A' : desiredTxnId,
         "rawTxnType": tx['purposeCode']?.toString() ?? '',
         "rawResponseCode": tx['gatewayResponseCode']?.toString() ?? '',
+        "originalTimestamp": tx['transactionTimestamp']?.toString() ?? '',
+        "rawQrAmount": tx['transactionAmount']?.toString() ?? '0', // Add this line
       });
     }
 
@@ -2128,12 +2152,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       MaterialPageRoute(
                         builder: (context) => StaticQRChargeSlip(
                           transactionData: {
-                            "transactionAmount": transaction['amount'].replaceAll('₹', ''),
-                            "transactionTimestamp": transaction['time'],
+                            "transactionAmount": transaction['rawQrAmount'], // Use the new raw amount field
+                            "transactionTimestamp": transaction['originalTimestamp'],
                             "merchantTransactionId": transaction['rrn'],
                             "customerVpa": transaction['id'],
                             "creditVpa": _selectedStaticQR ?? 'N/A',
                           },
+                          showTxnIdRow: false, // Add this line
                         ),
                       ),
                     );
