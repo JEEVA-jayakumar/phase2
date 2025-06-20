@@ -1297,12 +1297,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 
   String formatCurrency(num amount) {
-    if (amount >= 100000) {
-      return '₹${(amount / 100000).toStringAsFixed(2)} L';
-    } else if (amount >= 1000) {
-      return '₹${(amount / 1000).toStringAsFixed(2)} K';
-    } else {
+    if (amount < 100000) {
       return '₹${amount.toStringAsFixed(2)}';
+    } else {
+      double lakhValue = amount / 100000;
+      String formattedLakhString = lakhValue.toStringAsFixed(1);
+      if (formattedLakhString.endsWith('.0')) {
+        formattedLakhString = formattedLakhString.substring(0, formattedLakhString.length - 2);
+      }
+      return '₹$formattedLakhString Lakhs';
     }
   }
 
@@ -2052,16 +2055,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
               }
               List<TextSpan> _buildAmountSpans(String amount) {
-                // Split the amount to separate rupee symbol, main digits, and decimal part
+                String numericPart = amount;
+                String? lakhsSuffix;
+
+                if (amount.endsWith(" Lakhs")) {
+                  numericPart = amount.substring(0, amount.length - " Lakhs".length);
+                  lakhsSuffix = " Lakhs";
+                }
+
                 final regex = RegExp(r'(₹)(\d+)(\.\d+)?');
-                final match = regex.firstMatch(amount);
+                final match = regex.firstMatch(numericPart);
 
                 if (match != null) {
                   final rupeeSymbol = match.group(1) ?? '';
                   final mainDigits = match.group(2) ?? '';
-                  final decimalPart = match.group(3) ?? '';
+                  final decimalPart = match.group(3) ?? ''; // Includes '.'
 
-                  return [
+                  List<TextSpan> spans = [
                     TextSpan(
                       text: rupeeSymbol,
                       style: TextStyle(
@@ -2078,7 +2088,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: customPurple,
                       ),
                     ),
-                    if (decimalPart.isNotEmpty)
+                  ];
+
+                  if (decimalPart.isNotEmpty) {
+                    spans.add(
                       TextSpan(
                         text: decimalPart,
                         style: TextStyle(
@@ -2087,7 +2100,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           color: customPurple,
                         ),
                       ),
-                  ];
+                    );
+                  }
+
+                  if (lakhsSuffix != null) {
+                    spans.add(
+                      TextSpan(
+                        text: lakhsSuffix,
+                        style: TextStyle(
+                          fontSize: 13, // Style similar to decimal part
+                          fontWeight: FontWeight.w700,
+                          color: customPurple,
+                        ),
+                      ),
+                    );
+                  }
+                  return spans;
                 } else {
                   // Fallback if regex doesn't match
                   return [
