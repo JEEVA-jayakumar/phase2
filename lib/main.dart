@@ -14,6 +14,9 @@ import 'package:flutter/services.dart';
 import 'screens/transactions_details.dart';
 import 'screens/Initial_login.dart';
 import 'screens/NotificationScreen.dart';
+import 'screens/createTicketScreen.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -101,13 +104,8 @@ void main() async {
 
 class StaticQRChargeSlip extends StatefulWidget {
   final Map<String, dynamic> transactionData;
-  final bool showTxnIdRow; // New parameter
 
-  const StaticQRChargeSlip({
-    Key? key,
-    required this.transactionData,
-    this.showTxnIdRow = true, // Default to true
-  }) : super(key: key);
+  const StaticQRChargeSlip({Key? key, required this.transactionData}) : super(key: key);
 
   @override
   _StaticQRChargeSlipState createState() => _StaticQRChargeSlipState();
@@ -119,11 +117,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
   @override
   Widget build(BuildContext context) {
     // Safely extract values with fallbacks
-    // final amount = widget.transactionData['transactionAmount']?.replaceAll('₹', '') ?? '0.00'; // Old way
-    final String rawAmountStr = widget.transactionData['transactionAmount']?.toString().replaceAll('₹', '') ?? '0';
-    final double amountValue = double.tryParse(rawAmountStr) ?? 0.0;
-    final String formattedDisplayAmount = amountValue.toStringAsFixed(2);
-
+    final amount = widget.transactionData['transactionAmount']?.replaceAll('₹', '') ?? '0.00';
     final timestamp = widget.transactionData['transactionTimestamp'] ?.toString() ?? 'Unknown Time';
     final txnId = widget.transactionData['merchantTransactionId'] ?? 'N/A';
     final customerVpa = widget.transactionData['customerVpa'] ?? 'N/A';
@@ -209,7 +203,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
                         child: RepaintBoundary(
                           key: _receiptKey,
                           child: _buildReceiptCard(
-                            amount: formattedDisplayAmount, // Use the new formatted amount
+                            amount: amount,
                             timestamp: timestamp,
                             txnId: txnId,
                             customerVpa: customerVpa,
@@ -238,11 +232,6 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
     required String customerVpa,
     required String creditVpa,
   }) {
-    // Safely extract and parse the amount
-    final String rawAmountStr = widget.transactionData['transactionAmount']?.toString().replaceAll('₹', '') ?? '0';
-    final double amountValue = double.tryParse(rawAmountStr) ?? 0.0;
-    final String formattedDisplayAmount = amountValue.toStringAsFixed(2);
-
     const double cardPadding = 26.0;
 
     String formattedDate = '';
@@ -303,8 +292,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
               // Transaction details
               _receiptRow("DATE", formattedDate),
               _receiptRow("TIME", formattedTime),
-              if (widget.showTxnIdRow) // Conditional rendering
-                _receiptRow("TXN ID", txnId),
+              _receiptRow("TXN ID", txnId),
 
               const SizedBox(height: 20),
 
@@ -318,7 +306,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
                 ),
               ),
               Text(
-                "₹$formattedDisplayAmount",
+                "₹$amount",
                 style: const TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
@@ -1916,9 +1904,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final tx = qrTransactions[i] as Map<String, dynamic>;
       final status = _getQRTransactionStatus(tx['gatewayResponseCode'] ?? 'Unknown');
 
-      // Only use merchantTransactionId from tx object.
-      final String desiredTxnId = tx['merchantTransactionId']?.toString() ?? '';
-
       combinedTransactions.add({
         "id": tx['customerVpa']?.toString() ?? '',
         "amount": formatCurrency(double.parse(tx['transactionAmount']?.toString() ?? '0')),
@@ -1926,12 +1911,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         "time": _formatTimestamp(tx['transactionTimestamp']?.toString() ?? ''),
         "logo": "assets/qr.png",
         "type": "QR",
-        // Use desiredTxnId (from merchantTransactionId only) or 'N/A'
-        "rrn": desiredTxnId.isEmpty ? 'N/A' : desiredTxnId,
+        "rrn": tx['rRNumber']?.toString() ?? '',
         "rawTxnType": tx['purposeCode']?.toString() ?? '',
         "rawResponseCode": tx['gatewayResponseCode']?.toString() ?? '',
-        "originalTimestamp": tx['transactionTimestamp']?.toString() ?? '',
-        "rawQrAmount": tx['transactionAmount']?.toString() ?? '0', // Add this line
       });
     }
 
@@ -2073,16 +2055,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
               }
               List<TextSpan> _buildAmountSpans(String amount) {
-                // Split the amount to separate rupee symbol, main digits, and decimal part
+                String numericPart = amount;
+                String? lakhsSuffix;
+
+                if (amount.endsWith(" Lakhs")) {
+                  numericPart = amount.substring(0, amount.length - " Lakhs".length);
+                  lakhsSuffix = " Lakhs";
+                }
+
                 final regex = RegExp(r'(₹)(\d+)(\.\d+)?');
-                final match = regex.firstMatch(amount);
+                final match = regex.firstMatch(numericPart);
 
                 if (match != null) {
                   final rupeeSymbol = match.group(1) ?? '';
                   final mainDigits = match.group(2) ?? '';
-                  final decimalPart = match.group(3) ?? '';
+                  final decimalPart = match.group(3) ?? ''; // Includes '.'
 
-                  return [
+                  List<TextSpan> spans = [
                     TextSpan(
                       text: rupeeSymbol,
                       style: TextStyle(
@@ -2099,7 +2088,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: customPurple,
                       ),
                     ),
-                    if (decimalPart.isNotEmpty)
+                  ];
+
+                  if (decimalPart.isNotEmpty) {
+                    spans.add(
                       TextSpan(
                         text: decimalPart,
                         style: TextStyle(
@@ -2108,7 +2100,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           color: customPurple,
                         ),
                       ),
-                  ];
+                    );
+                  }
+
+                  if (lakhsSuffix != null) {
+                    spans.add(
+                      TextSpan(
+                        text: lakhsSuffix,
+                        style: TextStyle(
+                          fontSize: 13, // Style similar to decimal part
+                          fontWeight: FontWeight.w700,
+                          color: customPurple,
+                        ),
+                      ),
+                    );
+                  }
+                  return spans;
                 } else {
                   // Fallback if regex doesn't match
                   return [
@@ -2149,13 +2156,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       MaterialPageRoute(
                         builder: (context) => StaticQRChargeSlip(
                           transactionData: {
-                            "transactionAmount": transaction['rawQrAmount'], // Use the new raw amount field
-                            "transactionTimestamp": transaction['originalTimestamp'],
+                            "transactionAmount": transaction['amount'].replaceAll('₹', ''),
+                            "transactionTimestamp": transaction['time'],
                             "merchantTransactionId": transaction['rrn'],
                             "customerVpa": transaction['id'],
                             "creditVpa": _selectedStaticQR ?? 'N/A',
                           },
-                          showTxnIdRow: false, // Add this line
                         ),
                       ),
                     );
