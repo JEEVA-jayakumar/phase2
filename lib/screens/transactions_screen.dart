@@ -389,9 +389,9 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
           });
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFD5F0E0),
-          foregroundColor: const Color(0xFF61116A),
-          side: const BorderSide(color: Color(0xFF61116A)),
+          backgroundColor: const Color(0xFFFFFFFF),
+          foregroundColor: const Color(0xFF000000),
+          side: const BorderSide(color: Color(0xFF000000)),
           padding: const EdgeInsets.symmetric(vertical: 13),
           minimumSize: const Size(double.infinity, 30),
           shape: RoundedRectangleBorder(

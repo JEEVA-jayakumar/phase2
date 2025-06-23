@@ -32,10 +32,6 @@
 		<data>
 		D/AzBbchnZXixYm7rA4RFRa+bAE=
 		</data>
-		<key>flutter_assets/assets/amex.jpg</key>
-		<data>
-		Pps5Rfl2Jb/WeG7zV2rdWnG7nSQ=
-		</data>
 		<key>flutter_assets/assets/amex.png</key>
 		<data>
 		Pps5Rfl2Jb/WeG7zV2rdWnG7nSQ=
@@ -162,7 +158,7 @@
 		</data>
 		<key>flutter_assets/kernel_blob.bin</key>
 		<data>
-		VUqYjQCsVOIn3ppua9u5afVkB38=
+		nAa0a2LZR/iHR1aAcB+j2GkBhi4=
 		</data>
 		<key>flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf</key>
 		<data>
@@ -219,13 +215,6 @@
 			<key>hash2</key>
 			<data>
 			wRIQV0nvUfrMvvGRDvodm6+1iTwG0RfHo+KzfO0i8Uo=
-			</data>
-		</dict>
-		<key>flutter_assets/assets/amex.jpg</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			ZprQnENHZ2cYzzNJYLNo4D0L+7u05h8AS8tKehlZ6Pg=
 			</data>
 		</dict>
 		<key>flutter_assets/assets/amex.png</key>
@@ -449,7 +438,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			xH++btQseJ2+vKP8YR6/uOIwev6KOx8RuEAl4RTdNyo=
+			oHVIjSAsxenpH14NArSbtzc7DY7tVjsQ7/1Cdc3or7w=
 			</data>
 		</dict>
 		<key>flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf</key>

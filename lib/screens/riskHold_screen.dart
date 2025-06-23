@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'NotificationScreen.dart';
+import 'login_screen.dart';
+import 'package:vyappar_application/main.dart';
 
 Color customPurple = Color(0xFF61116A);
 
@@ -21,6 +23,7 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
   final ScrollController _scrollController = ScrollController();
   int _currentPage = 0;
   bool _hasMoreData = true;
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
@@ -38,6 +41,24 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
     }
   }
 
+  Future<http.Response> _handleResponse(Future<http.Response> apiCall) async {
+    try {
+      final response = await apiCall;
+      if (response.statusCode == 401) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          MyApp.navigatorKey.currentState?.pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => LoginScreen()),
+                (Route<dynamic> route) => false,
+          );
+        });
+        throw Exception('Unauthorized');
+      }
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> _fetchRiskHoldData() async {
     if (!_hasMoreData) return;
 
@@ -47,13 +68,15 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse(
-            'https://bportal.bijlipay.co.in:9027/txn/api/risk_hold_list?page=${_currentPage + 1}&size=1000&sort=createdAt,desc'),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Content-Type': 'application/json',
-        },
+      final response = await _handleResponse(
+        http.get(
+          Uri.parse(
+              'https://bportal.bijlipay.co.in:9027/txn/api/risk_hold_list?page=${_currentPage + 1}&size=1000&sort=createdAt,desc'),
+          headers: {
+            'Authorization': 'Bearer ${widget.authToken}',
+            'Content-Type': 'application/json',
+          },
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -66,6 +89,7 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
             _riskHoldData.addAll(newData);
             _currentPage++;
             _hasMoreData = !isLastPage;
+            _isFirstLoad = false;
           });
         } else {
           throw Exception(data['message'] ?? 'Failed to load risk hold data');
@@ -76,6 +100,7 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load data: ${e.toString()}';
+        _isFirstLoad = false;
       });
     } finally {
       setState(() {
@@ -177,6 +202,64 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.security,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No Risk Hold Records',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+                fontFamily: 'Montserrat',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'You currently have no transactions on risk hold. All your transactions are processing normally.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                fontFamily: 'Montserrat',
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () async {
+                _currentPage = 0;
+                _riskHoldData.clear();
+                _hasMoreData = true;
+                await _fetchRiskHoldData();
+              },
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Refresh'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: customPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoadingIndicator() {
     return _hasMoreData
         ? Padding(
@@ -186,6 +269,64 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
       ),
     )
         : Container();
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: Colors.red[300],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Something went wrong',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+                fontFamily: 'Montserrat',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                fontFamily: 'Montserrat',
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () async {
+                _currentPage = 0;
+                _riskHoldData.clear();
+                _hasMoreData = true;
+                await _fetchRiskHoldData();
+              },
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: customPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -215,7 +356,7 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
             ),
             actions: [
               IconButton(
-                icon:  Icon(Icons.notifications_active_outlined, color: Colors.grey, size: 21),
+                icon: Icon(Icons.notifications_active_outlined, color: Colors.grey, size: 21),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -259,12 +400,15 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
               onRefresh: () async {
                 _currentPage = 0;
                 _riskHoldData.clear();
+                _hasMoreData = true;
                 await _fetchRiskHoldData();
               },
-              child: _isLoading && _riskHoldData.isEmpty
+              child: _isLoading && _isFirstLoad
                   ? Center(child: CircularProgressIndicator(color: customPurple))
-                  : _errorMessage.isNotEmpty
-                  ? Center(child: Text(_errorMessage))
+                  : _errorMessage.isNotEmpty && _riskHoldData.isEmpty
+                  ? _buildErrorState()
+                  : _riskHoldData.isEmpty && !_isLoading
+                  ? _buildEmptyState()
                   : ListView.builder(
                 controller: _scrollController,
                 itemCount: _riskHoldData.length + 1,

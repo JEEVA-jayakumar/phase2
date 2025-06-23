@@ -238,7 +238,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
     String formattedTime = '';
 
     try {
-      DateTime parsedDate = DateTime.parse(timestamp);
+      DateTime parsedDate = DateTime.parse(timestamp).toLocal();
       formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
       formattedTime = DateFormat('hh:mm:ss a').format(parsedDate);
     } catch (e) {
@@ -292,7 +292,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
               // Transaction details
               _receiptRow("DATE", formattedDate),
               _receiptRow("TIME", formattedTime),
-              _receiptRow("TXN ID", txnId),
+              // _receiptRow("TXN ID", txnId),
 
               const SizedBox(height: 20),
 
@@ -449,9 +449,9 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
           });
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFD5F0E0),
-          foregroundColor: const Color(0xFF61116A),
-          side: const BorderSide(color: Color(0xFF61116A)),
+          backgroundColor: const Color(0xFFFFFFFF),
+          foregroundColor: const Color(0xFF000000),
+          side: const BorderSide(color: Color(0xFF000000)),
           padding: const EdgeInsets.symmetric(vertical: 13),
           minimumSize: const Size(double.infinity, 30),
           shape: RoundedRectangleBorder(
@@ -1298,14 +1298,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   String formatCurrency(num amount) {
     if (amount < 100000) {
-      return '₹${(amount * 100).round()}';
+      return '₹${amount.toStringAsFixed(2)}';
     } else {
       double lakhValue = amount / 100000;
-      String formattedLakhValue = lakhValue.toStringAsFixed(1);
-      if (formattedLakhValue.endsWith('.0')) {
-        formattedLakhValue = formattedLakhValue.substring(0, formattedLakhValue.length - 2);
+      String formattedLakhString = lakhValue.toStringAsFixed(1);
+      if (formattedLakhString.endsWith('.0')) {
+        formattedLakhString = formattedLakhString.substring(0, formattedLakhString.length - 2);
       }
-      return '₹$formattedLakhValue Lakhs';
+      return '₹$formattedLakhString Lakhs';
     }
   }
 
@@ -1909,6 +1909,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         "amount": formatCurrency(double.parse(tx['transactionAmount']?.toString() ?? '0')),
         "status": status,
         "time": _formatTimestamp(tx['transactionTimestamp']?.toString() ?? ''),
+        "originalFullTimestamp": tx['transactionTimestamp']?.toString() ?? '',
         "logo": "assets/qr.png",
         "type": "QR",
         "rrn": tx['rRNumber']?.toString() ?? '',
@@ -2157,7 +2158,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         builder: (context) => StaticQRChargeSlip(
                           transactionData: {
                             "transactionAmount": transaction['amount'].replaceAll('₹', ''),
-                            "transactionTimestamp": transaction['time'],
+                            "transactionTimestamp": transaction['originalFullTimestamp'],
                             "merchantTransactionId": transaction['rrn'],
                             "customerVpa": transaction['id'],
                             "creditVpa": _selectedStaticQR ?? 'N/A',
@@ -2974,4 +2975,3 @@ class _CustomDropdownFieldWithBarrierState extends State<CustomDropdownFieldWith
     );
   }
 }
-

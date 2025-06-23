@@ -409,22 +409,16 @@ class _NotificationScreenState extends State<NotificationScreen>
                         indicatorColor: customPurple,
                         labelColor: customPurple,
                         unselectedLabelColor: Colors.grey.shade500,
-                        labelStyle: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w500,
-                          fontSize: 15,
-                        ),
+                        labelStyle: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700, fontSize: 16),
+                        unselectedLabelStyle: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w500, fontSize: 15),
+                        indicatorWeight: 3,
+                        indicatorSize: TabBarIndicatorSize.label,
+                        isScrollable: false,
+                        labelPadding: EdgeInsets.zero,
                         tabs: const [
                           Tab(text: 'Risk Hold'),
                           Tab(text: 'Settlement'),
                         ],
-                        indicatorWeight: 3,
-                        indicatorPadding: EdgeInsets.symmetric(horizontal: 32),
                       ),
                     ),
                     TextButton(
