@@ -7,7 +7,6 @@ import 'NotificationScreen.dart';
 // Add these imports at the top
 import 'package:vyappar_application/main.dart'; // For AppState access
 import 'package:provider/provider.dart'; // For state management
-import 'package:vyappar_application/utils/api_error_handler.dart';
 
 Color customPurple = Color(0xFF61116A);
 
@@ -277,14 +276,11 @@ class _CreateTicketScreenState extends State<createTicketScreen> {
         url = 'https://bportal.bijlipay.co.in:9027/txn/settlement-report?vpa=$_selectedStaticQR&from=$fromDate&to=$toDate&fileType=$reportFormat';
       }
 
-      final response = await handleApiResponse(
-          http.get(
-            Uri.parse(url),
-            headers: {
-              'Authorization': 'Bearer ${widget.authToken}',
-            },
-          ),
-          context
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer ${widget.authToken}',
+        },
       );
 
       if (response.statusCode == 200) {
