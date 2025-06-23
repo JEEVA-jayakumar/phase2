@@ -1330,8 +1330,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
             decoration: BoxDecoration(
               color: Colors.white,
             ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 8.0),
+            child: Padding( // MODIFIED PADDING
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 4.0),
               child: Column(
                 children: [
                   TabBar(
@@ -1344,7 +1344,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                     indicatorWeight: 3,
                     indicatorSize: TabBarIndicatorSize.label,
                     isScrollable: false,
-                    labelPadding: EdgeInsets.zero,
+                    labelPadding: EdgeInsets.symmetric(vertical: 4.0), // MODIFIED LINE
                     tabs: const [
                       Tab(text: 'POS'),
                       Tab(text: 'Static QR'),
