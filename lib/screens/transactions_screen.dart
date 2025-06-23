@@ -2587,7 +2587,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                         '₹',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 12,
+                          fontSize: 14,
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
@@ -2595,7 +2595,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                         wholePart,
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                          fontSize: 18,
                           color: Color(0xFF1A1A1A),
                           letterSpacing: -0.2,
                         ),
@@ -2604,7 +2604,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                         '.',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: 14,
                           color: Color(0xFF1A1A1A),
                           letterSpacing: -0.1,
                         ),
@@ -2613,7 +2613,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                         decimalPart,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: 14,
                           color: Color(0xFF1A1A1A),
                           letterSpacing: -0.1,
                         ),

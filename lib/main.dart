@@ -2259,12 +2259,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             if (status == "Success")
-                              Image.asset('assets/success.png', height: 18, width: 18),
+                              Icon(Icons.check_circle, size: 9.7, color: Color(0xFF007E33)),
                             if (status == "Failed")
-                              Image.asset('assets/failure.png', height: 18, width: 18),
+                              Icon(Icons.error, size: 9.7, color: Color(0xFFCC0000)),
                             if (status == "Void")
-                              Icon(Icons.error, size: 9.7, color: Colors.orange),
+                              Icon(Icons.error_sharp, size: 9.7, color: Color(0xFFEC701E)),
                             const SizedBox(width: 4),
+
+                            // ? Color(0xFF007E33)!
+                            //                   : (status == "Void")
+                            //                   ? Color(0xFFEC701E)!
+                            //                   : (status == "Failed")
+                            //                   ? Color(0xFFCC0000)!
+                            //                   : Colors.grey[600]!;
                             Text(
                               status,
                               style: TextStyle(
