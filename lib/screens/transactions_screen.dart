@@ -118,7 +118,7 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
                   ),
                   const Expanded(
                     child: Text(
-                      'Transactions',
+                      'Transactions ' ,
                       style: TextStyle(
                         fontSize: 17.5,
                         fontWeight: FontWeight.w500,
@@ -643,7 +643,8 @@ class TransactionsScreen extends StatefulWidget {
   _TransactionsScreenState createState() => _TransactionsScreenState();
 }
 
-class _TransactionsScreenState extends State<TransactionsScreen> {
+class _TransactionsScreenState extends State<TransactionsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   String selectedTab = 'POS';
   late String selectedTerminalId;
   String? selectedVPA;
@@ -724,6 +725,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          selectedTab = _tabController.index == 0 ? 'POS' : 'Static QR';
+        });
+        if (_tabController.index == 0) {
+          _resetFilters(); // Assuming this resets POS filters
+          fetchTransactions(txnStatus, txnType);
+        } else {
+          _resetQRFilters(); // Assuming this resets QR filters
+          fetchStaticQRTransactions();
+        }
+      }
+    });
     selectedTerminalId = widget.terminalIds.isNotEmpty ? widget.terminalIds.first : '';
     selectedVPA = widget.vpaList.isNotEmpty ? widget.vpaList.first : null;
     _scrollController = ScrollController();
@@ -931,7 +947,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           fromDate = _dateTimeToUnixTimestamp(startOfPeriod).toString();
           toDate = _dateTimeToUnixTimestamp(endOfPeriod).toString();
         }
-      // Debug prints to verify date ranges
+        // Debug prints to verify date ranges
         print('Date Range Type: $dateRangeType');
         print('From Date Unix: $fromDate (${DateTime.fromMillisecondsSinceEpoch(int.parse(fromDate) * 1000)})');
         print('To Date Unix: $toDate (${DateTime.fromMillisecondsSinceEpoch(int.parse(toDate) * 1000)})');
@@ -988,7 +1004,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   transaction['txnType'],
                   transaction['txnResponseCode'] ?? 'Unknown'
               ),
-            "type": _getCardType(transaction['bin']),
+              "type": _getCardType(transaction['bin']),
               "rrn": transaction['rRNumber']?.toString() ?? '',
               "rawTxnType": transaction['txnType']?.toString() ?? '',
               "rawResponseCode": transaction['txnResponseCode']?.toString() ?? '',
@@ -1313,34 +1329,64 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade200),
-              ),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 8.0),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      _buildTabButton('POS', selectedTab == 'POS'),
-                      const SizedBox(width: 16),
-                      _buildTabButton('Static QR', selectedTab == 'Static QR'),
+                  TabBar(
+                    controller: _tabController,
+                    indicatorColor: customPurple,
+                    labelColor: customPurple,
+                    unselectedLabelColor: Colors.grey.shade500,
+                    labelStyle: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700, fontSize: 16),
+                    unselectedLabelStyle: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w500, fontSize: 15),
+                    indicatorWeight: 3,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    isScrollable: false,
+                    labelPadding: EdgeInsets.zero,
+                    tabs: const [
+                      Tab(text: 'POS'),
+                      Tab(text: 'Static QR'),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  if (selectedTab == 'POS')
-                    _buildPOSControls()
-                  else
-                    _buildStaticQRControls(),
+                  // const SizedBox(height: 16), // Removed: Controls are now in TabBarView
+                  // if (selectedTab == 'POS') // Removed: Controls are now in TabBarView
+                  //   _buildPOSControls()
+                  // else
+                  //   _buildStaticQRControls(), // Removed: Controls are now in TabBarView
                 ],
               ),
             ),
           ),
           Expanded(
-            child: selectedTab == 'POS'
-                ? _buildPOSTransactions()
-                : _buildStaticQRTransactions(),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // POS Tab View
+                Column(
+                  children: [
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildPOSControls(),
+                    ),
+                    Expanded(child: _buildPOSTransactions()),
+                  ],
+                ),
+                // Static QR Tab View
+                Column(
+                  children: [
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildStaticQRControls(),
+                    ),
+                    Expanded(child: _buildStaticQRTransactions()),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1720,9 +1766,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        Icons.download_rounded,
+                        Icons.file_download_outlined,
                         color: Colors.white,
                         size: 24,
+                        weight: 500,
                       ),
                     ),
                     SizedBox(width: 12),
@@ -1911,13 +1958,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.download_rounded, size: 18),
+                            Icon(
+                              Icons.file_download_outlined,
+                              color: Colors.white,
+                              size: 24,
+                              weight: 500,
+                            ),
                             SizedBox(width: 6),
                             Flexible(
                               child: Text(
                                 'Download',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
                                   fontFamily: 'Montserrat',
                                 ),
                               ),
@@ -2091,10 +2144,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget _buildDownloadButton() {
     return TextButton.icon(
       onPressed: _showDownloadConfirmation,
-      icon: Icon(Icons.download, color: Colors.white),
+      icon:Icon(
+        Icons.file_download_outlined,
+        color: Colors.white,
+        size: 24,
+        weight: 500,
+      ),
       label: Text(
         "Download",
-        style: TextStyle(color: Colors.white),
+        style: TextStyle(color: Colors.white,fontSize: 15,fontWeight: FontWeight.w700),
       ),
       style: TextButton.styleFrom(
         backgroundColor: customPurple,
@@ -2396,56 +2454,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     selectedFilterCount = 0;
   }
 
-  Widget _buildTabButton(String text, bool isSelected) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          selectedTab = text;
-          transactions.clear();
-          if (text == 'Static QR') {
-            _resetQRFilters();
-            fetchStaticQRTransactions();
-          } else {
-            _resetFilters();
-            fetchTransactions(txnStatus, txnType);
-          }
-        });
-      },
-      child: Container(
-        width: text == 'Static QR' ? 100 : 80, // Fixed width based on content
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: isSelected ? customPurple : Colors.grey,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13, // Slightly smaller font size
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 2,
-              color: isSelected ? customPurple : Colors.transparent,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildTransactionItem(Map<String, dynamic> transaction) {
     final statusText = transaction['status'];
     Color statusColor = (statusText == "Success")
-        ? Colors.green[600]!
+        ? Color(0xFF007E33)!
         : (statusText == "Void")
-        ? Colors.orange[600]!
+        ? Color(0xFFEC701E)!
         : (statusText == "Failed")
-        ? Colors.red[600]!
+        ? Color(0xFFCC0000)!
         : Colors.grey[600]!; // default color
 
     String amountText = transaction['amount'];
@@ -2623,6 +2639,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
   @override
   void dispose() {
+    _tabController.dispose();
     _posDebounce?.cancel();
     _qrDebounce?.cancel();
     _scrollController.dispose();

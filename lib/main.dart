@@ -930,11 +930,11 @@ class _MainScreenState extends State<MainScreen> {
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.swap_horiz),
+              icon: Icon(Icons.compare_arrows_sharp),
               label: 'Transaction',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined),
+              icon: Icon(Icons.insert_chart_outlined_rounded),
               label: 'Report',
             ),
             BottomNavigationBarItem(
@@ -1316,14 +1316,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'vasanth@hdfc'
   ];
 
-  final List<Map<String, String>> links = [
-    {"icon": "assets/transactions.png", "label": "My Transaction", "key": "transaction"},
-    // {"icon": "assets/settlement.png", "label": "My Settlement", "key": "settlement"},
-    {"icon": "assets/Notifications.png", "label": "My Notification", "key": "notification"},
-    {"icon": "assets/baz.png", "label": "Risk Hold", "key": "Risk Hold"},
-    {"icon": "assets/myreports.png", "label": "My Report", "key": "report"},
-    {"icon": "assets/supportcentre.png", "label": "Support Center", "key": "support"},
-  ];
+  // final List<Map<String, String>> links = [
+  //   {"icon": Icons.compare_arrows_sharp, "label": "My Transaction", "key": "transaction"},
+  //   {"icon": Icons.notifications_active_outlined, "label": "My Notification", "key": "notification"},
+  //   {"icon": Icons.shield, "label": "Risk Hold", "key": "Risk Hold"},
+  //   {"icon": Icons.insert_chart, "label": "My Report", "key": "report"},
+  //   {"icon": Icons.support_agent, "label": "Support Center", "key": "support"},
+  // ];
+
 
 
   Color staticQRBackgroundColor = const Color(0xFFEBEBEB);
@@ -2135,11 +2135,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               final transaction = combinedTransactions[index];
               final status = transaction["status"];
               Color statusColor = (status == "Success")
-                  ? Colors.green[600]!
+                  ? Color(0xFF007E33)!
                   : (status == "Void")
-                  ? Colors.orange[600]!
+                  ? Color(0xFFEC701E)!
                   : (status == "Failed")
-                  ? Colors.red[600]!
+                  ? Color(0xFFCC0000)!
                   : Colors.grey[600]!;
 
               return GestureDetector(
@@ -2299,6 +2299,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildQuickLinks() {
+    final List<Map<String, dynamic>> links = [
+      {"icon": Icons.compare_arrows, "label": "My Transaction", "key": "transaction"},
+      {"icon": Icons.notifications_active_outlined, "label": "My Notification", "key": "notification"},
+      {"icon": Icons.shield_outlined, "label": "Risk Hold", "key": "Risk Hold"},
+      {"icon": Icons.insert_chart_outlined, "label": "My Report", "key": "report"},
+      {"icon": Icons.support_agent, "label": "Support Center", "key": "support"},
+    ];
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2352,11 +2360,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         shape: BoxShape.rectangle,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Image.asset(
-                        link["icon"]!,
+                      child: Icon(
+                        link["icon"] as IconData,
                         color: customPurple,
-                        width: 32,
-                        height: 32,
+                        size: 24,
                       ),
                     ),
                     const SizedBox(height: 8),
