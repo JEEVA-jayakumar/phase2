@@ -43,6 +43,7 @@ dependencies:
   provider: any
   share_plus: any
   path_provider: any
+  sticky_headers: ^0.3.0+2
 
 
 dev_dependencies:

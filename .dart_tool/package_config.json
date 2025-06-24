@@ -440,6 +440,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "sticky_headers",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/sticky_headers-0.3.0+2",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
       "name": "stream_channel",
       "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/stream_channel-2.1.4",
       "packageUri": "lib/",
@@ -572,7 +578,7 @@
       "languageVersion": "3.7"
     }
   ],
-  "generated": "2025-06-23T06:29:55.653552Z",
+  "generated": "2025-06-24T05:54:46.964865Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///opt/homebrew/Caskroom/flutter/3.29.2/flutter",
