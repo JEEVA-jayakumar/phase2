@@ -644,6 +644,7 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> with SingleTickerProviderStateMixin {
+  static const String _todayMarker = '__TODAY__';
   late TabController _tabController;
   String selectedTab = 'POS';
   late String selectedTerminalId;
@@ -2224,29 +2225,31 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
     List<Widget> transactionWidgets = [];
 
-    groupedTransactions.forEach((date, dateTransactions) {
-      transactionWidgets.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Center(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              decoration: BoxDecoration(
-                color: Color(0xFFF8EEF2),
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Text(
-                date,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
+    groupedTransactions.forEach((dateKey, dateTransactions) {
+      if (dateKey != _todayMarker) {
+        transactionWidgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10.0), // Adjusted outer padding
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0), // Adjusted inner padding
+                decoration: BoxDecoration(
+                  color: Color(0xFFF2F2F2), // New background color
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: Text(
+                  dateKey,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
 
       transactionWidgets.addAll(
           dateTransactions.map((transaction) => _buildTransactionItem(transaction))
@@ -2302,10 +2305,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
   }
 
   String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = _getMonthName(date.month);
-    final year = date.year;
-    return "$day $month $year";
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final yesterdayDate = DateTime(now.year, now.month, now.day - 1);
+    final inputDateOnly = DateTime(date.year, date.month, date.day);
+
+    if (inputDateOnly == todayDate) {
+      return _todayMarker;
+    } else if (inputDateOnly == yesterdayDate) {
+      return "Yesterday";
+    } else {
+      return DateFormat('dd MMM yyyy').format(date);
+    }
   }
 
   String _getMonthName(int month) {
@@ -2383,29 +2394,31 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
       }
     }
 
-    groupedTransactions.forEach((date, dateTransactions) {
-      transactionWidgets.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Center(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              decoration: BoxDecoration(
-                color: Color(0xFFF8EEF2),
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Text(
-                date,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
+    groupedTransactions.forEach((dateKey, dateTransactions) {
+      if (dateKey != _todayMarker) {
+        transactionWidgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10.0), // Adjusted outer padding
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0), // Adjusted inner padding
+                decoration: BoxDecoration(
+                  color: Color(0xFFF2F2F2), // New background color
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: Text(
+                  dateKey,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
 
       transactionWidgets.addAll(
           dateTransactions.map((transaction) => _buildTransactionItem(transaction))
