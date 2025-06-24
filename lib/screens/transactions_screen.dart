@@ -15,6 +15,62 @@ import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:sticky_headers/sticky_headers.dart';
 
+// Top-level parsing functions
+int _getMonthNumberFromString(String monthStr) {
+  const months = {
+    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+  };
+  return months[monthStr.substring(0, 3)] ?? 0; // Use substring to be safe with longer month names if they appear
+}
+
+DateTime? parseTimestamp(String? dateStr) {
+  if (dateStr == null || dateStr == 'Unknown Time' || dateStr.isEmpty) {
+    return null;
+  }
+  try {
+    // Try direct ISO 8601 parsing first (most common for server timestamps)
+    // Handles formats like YYYY-MM-DDTHH:MM:SSZ, YYYY-MM-DDTHH:MM:SS.mmm, YYYY-MM-DD HH:MM:SS etc.
+    if (dateStr.contains('T') || (dateStr.contains('-') && dateStr.contains(':'))) {
+      String isoCompatibleDateStr = dateStr.replaceAll('.0', ''); // Remove trailing .0 if present
+      return DateTime.parse(isoCompatibleDateStr);
+    }
+
+    // Try "DD MMM YYYY HH.mm AM/PM" format (from original _parseDateTime)
+    final parts = dateStr.split(' ');
+    if (parts.length >= 5 && dateStr.contains('.')) {
+      final day = int.tryParse(parts[0]);
+      final month = _getMonthNumberFromString(parts[1]);
+      final year = int.tryParse(parts[2]);
+
+      final timeParts = parts[3].split('.');
+      var hour = int.tryParse(timeParts[0]);
+      final minute = int.tryParse(timeParts[1]);
+
+      final amPmPart = parts[4].toUpperCase();
+      final isAM = amPmPart == 'AM';
+      final isPM = amPmPart == 'PM';
+
+      if (day != null && month != 0 && year != null && hour != null && minute != null && (isAM || isPM)) {
+        if (isPM && hour < 12) {
+          hour += 12;
+        } else if (isAM && hour == 12) { // Midnight case
+          hour = 0;
+        }
+        return DateTime(year, month, day, hour, minute);
+      }
+    }
+    // If other formats are expected, add parsing logic here.
+    // As a last resort, if no specific format matches, try DateTime.parse again.
+    // This might succeed if the string is in a format DateTime.parse understands but wasn't caught by earlier checks.
+    return DateTime.parse(dateStr);
+
+  } catch (e) {
+    print('Error parsing timestamp in utility function: "$dateStr" - Error: $e');
+    return null;
+  }
+}
+// End of Top-level parsing functions
 
 Color customPurple = Color(0xFF61116A);
 
@@ -177,15 +233,17 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
 
     String formattedDate = '';
     String formattedTime = '';
+    // final timestamp variable is already defined above in the _buildReceiptCard method:
+    // final timestamp = widget.transactionData['transactionTimestamp']?.toString() ?? 'Unknown Time';
 
-    try {
-      DateTime parsedDate = DateTime.parse(timestamp);
-      formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
-      formattedTime = DateFormat('hh:mm:ss a').format(parsedDate);
-    } catch (e) {
-      print('Error parsing date: $e');
-      formattedDate = 'Unknown Date';
-      formattedTime = 'Unknown Time';
+    DateTime? parsedDateTime = parseTimestamp(timestamp); // Call the new top-level function
+
+    if (parsedDateTime != null) {
+      formattedDate = DateFormat('dd-MM-yyyy').format(parsedDateTime);
+      formattedTime = DateFormat('hh:mm a').format(parsedDateTime); // Format changed to hh:mm a
+    } else {
+      formattedDate = 'Invalid Date';
+      formattedTime = 'Invalid Time';
     }
 
     return ClipPath(
@@ -898,7 +956,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
           for (var transaction in newContent) {
             final processedTransaction = {
-              "cardNumber": "**** ${transaction['maskedCardNumber'] != null && transaction['maskedCardNumber'] != '' ? transaction['maskedCardNumber'] : 'XXXX'}",
+              "cardNumber": _getCardType(transaction['bin']) == 'qr'
+                  ? (transaction['customerVpa'] ?? transaction['maskedCardNumber'] ?? 'VPA N/A') // Prefer customerVpa, fallback to maskedCardNumber, then to a specific string
+                  : "**** ${transaction['maskedCardNumber'] != null && transaction['maskedCardNumber'] != '' ? transaction['maskedCardNumber'] : 'XXXX'}",
               "time": transaction['responseReceivedTime'] ?? 'Unknown Time',
               "amount": "₹${transaction['txnAmount'].toString()}",
               "status": _getTransactionStatus(transaction['txnType'],
@@ -1018,7 +1078,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
           for (var transaction in content) {
             final processedTransaction = {
-              "cardNumber": "**** ${transaction['maskedCardNumber'] != null && transaction['maskedCardNumber'] != '' ? transaction['maskedCardNumber'] : 'XXXX'}",
+              "cardNumber": _getCardType(transaction['bin']) == 'qr'
+                  ? (transaction['customerVpa'] ?? transaction['maskedCardNumber'] ?? 'VPA N/A') // Prefer customerVpa, fallback to maskedCardNumber, then to a specific string
+                  : "**** ${transaction['maskedCardNumber'] != null && transaction['maskedCardNumber'] != '' ? transaction['maskedCardNumber'] : 'XXXX'}",
               "time": transaction['responseReceivedTime'] ?? 'Unknown Time',
               "amount": "₹${transaction['txnAmount'].toString()}",
               "status": _getTransactionStatus(
@@ -2574,20 +2636,40 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                 ),
               ),
             );
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TransactionDetailsScreen(
-                  authToken: widget.authToken,
-                  rrn: transaction['rrn'],
-                  terminalIds: widget.terminalIds,
-                  vpaList: widget.vpaList,
-                  transactionStatus: statusText,
-                  transactionType: transaction['rawTxnType'],
+          } else { // POS tab
+            // Check if the transaction is a Static QR type based on transaction['type']
+            if (transaction['type'] == 'qr') {
+              // It's a Static QR transaction appearing in the POS tab, navigate to StaticQRChargeSlip
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => StaticQRChargeSlip(
+                    transactionData: {
+                      "transactionAmount": transaction['amount'].replaceAll('₹', ''),
+                      "transactionTimestamp": transaction['time'],
+                      "merchantTransactionId": transaction['rrn'], // Use rrn as merchantTransactionId
+                      "customerVpa": transaction['cardNumber'],     // Use cardNumber as customerVpa (as it holds VPA here)
+                      "creditVpa": selectedVPA ?? 'N/A',          // Use selectedVPA from the screen state
+                    },
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              // It's a regular POS (card) transaction, navigate to TransactionDetailsScreen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TransactionDetailsScreen(
+                    authToken: widget.authToken,
+                    rrn: transaction['rrn'],
+                    terminalIds: widget.terminalIds,
+                    vpaList: widget.vpaList,
+                    transactionStatus: statusText,
+                    transactionType: transaction['rawTxnType'],
+                  ),
+                ),
+              );
+            }
           }
         },
         splashColor: Colors.grey.withOpacity(0.1),
@@ -2639,7 +2721,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      transaction['time'],
+                      DateFormat('hh:mm a').format(_parseDateTime(transaction['time'])),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 14,
