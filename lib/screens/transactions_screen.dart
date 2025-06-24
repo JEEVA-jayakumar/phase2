@@ -687,7 +687,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
   // Helper function to parse date keys back to DateTime for sorting
   DateTime? _parseDateKey(String dateKey) {
-    if (dateKey == "Today") {
+    if (dateKey == "") { // Handle empty string for Today
       final now = DateTime.now();
       return DateTime(now.year, now.month, now.day);
     }
@@ -2273,7 +2273,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
         final dateTransactions = groupedTransactions[dateKey]!;
 
         return StickyHeader(
-          header: Container(
+          header: dateKey == ""
+              ? const SizedBox.shrink()
+              : Container(
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Container(
@@ -2342,7 +2344,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
     final inputDateOnly = DateTime(date.year, date.month, date.day);
 
     if (inputDateOnly == todayDate) {
-      return _todayMarker;
+      return ""; // Return empty string for today
     } else if (inputDateOnly == yesterdayDate) {
       return "Yesterday";
     } else {
@@ -2428,12 +2430,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
     List<String> dateKeys = groupedTransactions.keys.toList();
     dateKeys.sort((a, b) {
+      // Handle "Today" (empty string) first
+      if (a == "" && b != "") return -1; // "" (Today) comes before anything else
+      if (a != "" && b == "") return 1;  // Anything else comes after "" (Today)
+      if (a == "" && b == "") return 0; // Should not happen if keys are unique
+
+      // Handle "Yesterday" second
+      if (a == "Yesterday" && b != "Yesterday") {
+        // if b is "", "Yesterday" comes after, so return 1
+        // otherwise, "Yesterday" comes before other dates, so return -1
+        return (b == "") ? 1 : -1;
+      }
+      if (a != "Yesterday" && b == "Yesterday") {
+        // if a is "", "Yesterday" comes after, so return -1
+        // otherwise, other dates come after "Yesterday", so return 1
+        return (a == "") ? -1 : 1;
+      }
+      if (a == "Yesterday" && b == "Yesterday") return 0;
+
+
       DateTime? dateA = _parseDateKey(a); // _parseDateKey is from previous step
       DateTime? dateB = _parseDateKey(b);
+
       if (dateA == null && dateB == null) return 0;
-      if (dateA == null) return 1;
-      if (dateB == null) return -1;
-      return dateB.compareTo(dateA); // Sort descending
+      if (dateA == null) return 1; // Put other nulls (errors) at the end
+      if (dateB == null) return -1; // Put other nulls (errors) at the end
+      return dateB.compareTo(dateA); // Sort other dates descending (newest first)
     });
 
     return ListView.builder(
@@ -2453,7 +2475,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
         final dateTransactions = groupedTransactions[dateKey]!;
 
         return StickyHeader(
-          header: Container(
+          header: dateKey == ""
+              ? const SizedBox.shrink()
+              : Container(
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Container(
