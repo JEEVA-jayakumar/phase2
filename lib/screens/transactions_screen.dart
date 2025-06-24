@@ -1363,11 +1363,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                     labelStyle: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700, fontSize: 16),
                     unselectedLabelStyle: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w500, fontSize: 15),
                     indicatorWeight: 3,
-                    indicatorSize: TabBarIndicatorSize.label, // Keep as is, good for this style
-                    isScrollable: true, // Key change for left alignment and natural width
-                    labelPadding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 20.0), // Added horizontal padding for spacing
-                    // Alternatively, could wrap Tab widgets with Padding if more granular control per tab is needed,
-                    // but labelPadding is usually sufficient for uniform spacing.
+                    indicatorSize: TabBarIndicatorSize.label,
+                    isScrollable: false,
+                    labelPadding: EdgeInsets.symmetric(vertical: 4.0), // MODIFIED LINE
                     tabs: const [
                       Tab(text: 'POS'),
                       Tab(text: 'Static QR'),
@@ -2276,8 +2274,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
         return StickyHeader(
           header: Container(
-            height: 50.0,
-            width: double.infinity, // Add this line
+            height: 50.0, // Keep height or adjust if needed for new design
             padding: EdgeInsets.symmetric(horizontal: 16.0), // Keep padding
             alignment: Alignment.center, // Center the text
             decoration: BoxDecoration(
@@ -2455,9 +2452,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
         return StickyHeader(
           header: Container(
             height: 50.0,
-            width: double.infinity, // Ensure the container takes full available width
             padding: EdgeInsets.symmetric(horizontal: 16.0),
-            alignment: Alignment.center, // This will now center the text across the full width
+            alignment: Alignment.center, // Center the text
             decoration: BoxDecoration(
               color: Color(0xFFF2F2F2), // Subtle background
               border: Border(
