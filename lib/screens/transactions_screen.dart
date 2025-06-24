@@ -2274,31 +2274,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
         return StickyHeader(
           header: Container(
-            height: 50.0, // Keep height or adjust if needed for new design
-            padding: EdgeInsets.symmetric(horizontal: 16.0), // Keep padding
-            alignment: Alignment.center, // Center the text
-            decoration: BoxDecoration(
-              color: Color(0xFFF2F2F2), // Keep subtle background
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey[300]!, // A light border color
-                  width: 1.0,
-                ),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDEDED), // Soft neutral background
+                borderRadius: BorderRadius.circular(20),
               ),
-            ),
-            child: Text(
-              dateKey, // "Today", "Yesterday", or "dd MMM yyyy"
-              style: TextStyle(
-                color: Colors.grey[800], // Slightly darker text for better contrast
-                fontWeight: FontWeight.w600, // Slightly less bold if w700 is too much
-                fontSize: 15, // Slightly larger font
+              child: Text(
+                dateKey, // "Today", "Yesterday", or "20 Jun 2025"
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF4A4A4A), // Professional muted grey
+                  letterSpacing: 0.3,
+                ),
               ),
             ),
           ),
           content: Column(
-            children: dateTransactions.map((transaction) => _buildTransactionItem(transaction)).toList(),
+            children: dateTransactions
+                .map((transaction) => _buildTransactionItem(transaction))
+                .toList(),
           ),
         );
+
+
+
       },
     );
   }
@@ -2451,31 +2454,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
         return StickyHeader(
           header: Container(
-            height: 50.0,
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            alignment: Alignment.center, // Center the text
-            decoration: BoxDecoration(
-              color: Color(0xFFF2F2F2), // Subtle background
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey[300]!, // A light border color
-                  width: 1.0,
-                ),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDEDED), // Soft neutral background
+                borderRadius: BorderRadius.circular(20),
               ),
-            ),
-            child: Text(
-              dateKey, // "Today", "Yesterday", or "dd MMM yyyy"
-              style: TextStyle(
-                color: Colors.grey[800], // Slightly darker text
-                fontWeight: FontWeight.w600, // Slightly less bold
-                fontSize: 15, // Slightly larger font
+              child: Text(
+                dateKey, // "Today", "Yesterday", or "20 Jun 2025"
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF4A4A4A), // Professional muted grey
+                  letterSpacing: 0.3,
+                ),
               ),
             ),
           ),
           content: Column(
-            children: dateTransactions.map((transaction) => _buildTransactionItem(transaction)).toList(),
+            children: dateTransactions
+                .map((transaction) => _buildTransactionItem(transaction))
+                .toList(),
           ),
         );
+
+
+
       },
     );
   }
