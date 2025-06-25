@@ -1911,6 +1911,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     for (var i = 0; i < min(5, qrTransactions.length); i++) {
       final tx = qrTransactions[i] as Map<String, dynamic>;
       final status = _getQRTransactionStatus(tx['gatewayResponseCode'] ?? 'Unknown');
+
+      String? idToUse = tx['merchantTransactionId']?.toString();
+      if (idToUse == null || idToUse.trim().isEmpty) {
+        // 'rrn' is the field name in the API response for lastFiveTxnAmountForQr for the RRN
+        idToUse = tx['rrn']?.toString();
+      }
+
       combinedTransactions.add({
         "id": tx['customerVpa']?.toString() ?? '',
         "amount": formatCurrency(double.parse(tx['transactionAmount']?.toString() ?? '0')),
@@ -1918,11 +1925,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         "time": _formatTimestamp(tx['transactionTimestamp']?.toString() ?? ''),
         "originalFullTimestamp": tx['transactionTimestamp']?.toString() ?? '',
         "logo": "assets/qr.png",
-        "type": "QR",
-        "rrn": tx['rRNumber']?.toString() ?? '',
+        "type": "qr", // Ensure this is "qr" (lowercase)
+        "rrn": idToUse ?? '', // Use the determined idToUse here
         "rawTxnType": tx['purposeCode']?.toString() ?? '',
         "rawResponseCode": tx['gatewayResponseCode']?.toString() ?? '',
-        "rawTxnTime": null,
+        "rawTxnTime": null, // As per existing code
       });
     }
 
@@ -2155,7 +2162,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     return;
                   }
 
-                  if (transaction["type"] == "QR") {
+                  if (transaction["type"] == "qr") {
                     String amountString = transaction['amount'].toString().replaceAll('₹', '');
                     if (amountString.contains(" Lakhs")) {
                       try {
@@ -2188,9 +2195,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     }
 
                     // **** CRUCIAL RRN HANDLING ****
-                    String rrnValue = transaction['rrn']?.toString() ?? '';
-                    if (rrnValue.trim().toLowerCase() == "null" || rrnValue.trim().isEmpty) {
-                      rrnValue = ''; // Or a specific placeholder like "N/A" if StaticQRChargeSlip handles it
+                    String? rrnOriginal = transaction['rrn']?.toString(); // Get the original rrn string
+                    String? rrnValueForSlip = null; // Default to null
+
+                    if (rrnOriginal != null &&
+                        rrnOriginal.trim().isNotEmpty &&
+                        rrnOriginal.trim().toLowerCase() != 'null') {
+                      rrnValueForSlip = rrnOriginal.trim(); // Use the trimmed original if valid
                     }
                     // *****************************
 
@@ -2201,7 +2212,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           transactionData: {
                             "transactionAmount": amountString,
                             "transactionTimestamp": timestampForChargeSlip,
-                            "merchantTransactionId": rrnValue, // Use cleaned rrnValue
+                            "merchantTransactionId": rrnValueForSlip, // USE THE NEW VARIABLE HERE
                             "customerVpa": transaction['id']?.toString() ?? '',
                             "creditVpa": _selectedStaticQR ?? 'N/A',
                           },
