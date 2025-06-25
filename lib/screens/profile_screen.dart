@@ -589,64 +589,33 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           child: Text(
             'QR Sticker Voice Out (SoundBox)',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: FontWeight.w500,
               color: textColor,
               letterSpacing: 0.4,
             ),
           ),
         ),
+        // SizedBox wrapper around _buildCustomSwitch is removed.
         _buildCustomSwitch(primaryColor),
       ],
     );
   }
 
-  Widget _buildCustomSwitch(Color primaryColor) {
-    return SizedBox(
-      width: 32, // Reduced from 48
-      child: GestureDetector(
-        onTap: () {
-          final newToggleState = !_isToggled;
-          _updateSpeakOutEnable(newToggleState);
+  Widget _buildCustomSwitch(Color primaryColor) { // primaryColor is passed but might not be used if we hardcode iOS colors
+    return Transform.scale(
+      scale: 0.8, // Scaling factor to make the switch smaller
+      child: Switch(
+        value: _isToggled,
+        onChanged: (bool value) {
+          // This line is crucial and should call the existing state update mechanism
+          _updateSpeakOutEnable(value);
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          height: 20, // Reduced from 28
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(9), // Reduced from 14
-            color: _isToggled ? primaryColor : Colors.grey.shade100,
-            border: Border.all(
-              color: _isToggled ? primaryColor : Colors.grey.shade300,
-              width: 1,
-            ),
-          ),
-          child: Stack(
-            children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                left: _isToggled ? 16 : 2, // Adjusted from 20 to 16
-                top: 2,
-                child: Container(
-                  width: 14, // Reduced from 20
-                  height: 14, // Reduced from 20
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        activeColor: Colors.white, // Thumb color when ON (standard for iOS)
+        activeTrackColor: Color(0xFF61116A), // Track color when ON (standard iOS green)
+        inactiveThumbColor: Colors.white, // Thumb color when OFF (standard for iOS)
+        inactiveTrackColor: Colors.grey.shade300, // Track color when OFF (standard iOS light grey)
+        // For a more authentic iOS feel, ensure the track has rounded ends, which is default for Flutter's Switch.
       ),
     );
   }
@@ -664,7 +633,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         Text(
           'Select Language',
           style: TextStyle(
-            fontSize: 14, // Reduced from 16
+            fontSize: 15, // Increased font size
             fontWeight: FontWeight.w600,
             color: textColor,
             letterSpacing: 0.2,
@@ -778,13 +747,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoTile('Merchant Name', _profileData['merchantName'], textColor),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22), // Increased spacing
         _buildInfoTile('Mobile Number', _maskMobile(_profileData['mobileNo']), textColor),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22), // Increased spacing
         _buildInfoTile('Email', _maskEmail(_profileData['email']), textColor),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22), // Increased spacing
         _buildInfoTile('Address', _profileData['merchantAddress'], textColor),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22), // Increased spacing
         _buildAccountDetails(textColor),
       ],
     );
@@ -799,9 +768,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           style: TextStyle(
             color: Color(0xFF383838),
             fontFamily: 'Montserrat',
-            fontSize: 12,
+            fontSize: 13, // Increased font size
             fontWeight: FontWeight.w800,
-            height: 20 / 12, // line-height: 20px
+            height: 20 / 13,
           ),
         ),
         const SizedBox(height: 8),
@@ -810,42 +779,42 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           style: const TextStyle(
             color: Color(0xFF383838),
             fontFamily: 'Montserrat',
-            fontSize: 14,
+            fontSize: 15, // Increased font size
             fontWeight: FontWeight.w500,
-            height: 21 / 14, // line-height: 21px
+            height: 21 / 15,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5), // Increased spacing
         Text(
           _profileData['bankName']?.toString() ?? 'Not available',
           style: const TextStyle(
             color: Color(0xFF383838),
             fontFamily: 'Montserrat',
-            fontSize: 14,
+            fontSize: 15, // Increased font size
             fontWeight: FontWeight.w500,
-            height: 21 / 14, // line-height: 21px
+            height: 21 / 15,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5), // Increased spacing
         Text(
           _profileData['branch']?.toString() ?? 'Not available',
           style: const TextStyle(
             color: Color(0xFF383838),
             fontFamily: 'Montserrat',
-            fontSize: 14,
+            fontSize: 15, // Increased font size
             fontWeight: FontWeight.w500,
-            height: 21 / 14, // line-height: 21px
+            height: 21 / 15,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5), // Increased spacing
         Text(
           _profileData['ifscCode']?.toString() ?? 'Not available',
           style: const TextStyle(
             color: Color(0xFF383838),
             fontFamily: 'Montserrat',
-            fontSize: 14,
+            fontSize: 15, // Increased font size
             fontWeight: FontWeight.w500,
-            height: 21 / 14, // line-height: 21px
+            height: 21 / 15,
           ),
         ),
       ],
@@ -863,20 +832,20 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           style: const TextStyle(
             color: Color(0xFF383838),
             fontFamily: 'Montserrat',
-            fontSize: 12,
+            fontSize: 13, // Increased font size
             fontWeight: FontWeight.w800,
-            height: 20 / 12, // line-height: 20px
+            height: 20 / 13,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5), // Increased spacing
         Text(
           displayValue,
           style: const TextStyle(
             color: Color(0xFF383838),
             fontFamily: 'Montserrat',
-            fontSize: 14,
+            fontSize: 15, // Increased font size
             fontWeight: FontWeight.w500,
-            height: 21 / 14, // line-height: 21px
+            height: 21 / 15,
           ),
         ),
       ],

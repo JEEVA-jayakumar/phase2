@@ -957,8 +957,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
           for (var transaction in newContent) {
             final processedTransaction = {
               "cardNumber": _getCardType(transaction['bin']) == 'qr'
-                  ? (transaction['customerVpa'] ?? transaction['maskedCardNumber'] ?? 'VPA N/A') // Prefer customerVpa, fallback to maskedCardNumber, then to a specific string
-                  : "**** ${transaction['maskedCardNumber'] != null && transaction['maskedCardNumber'] != '' ? transaction['maskedCardNumber'] : 'XXXX'}",
+                  ? (transaction['customerVpa'] ?? transaction['maskedCardNumber']) // Store raw customerVpa or maskedCardNumber for QR
+                  : transaction['maskedCardNumber'], // Store raw maskedCardNumber for Card
               "time": transaction['responseReceivedTime'] ?? 'Unknown Time',
               "amount": "₹${transaction['txnAmount'].toString()}",
               "status": _getTransactionStatus(transaction['txnType'],
@@ -1079,8 +1079,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
           for (var transaction in content) {
             final processedTransaction = {
               "cardNumber": _getCardType(transaction['bin']) == 'qr'
-                  ? (transaction['customerVpa'] ?? transaction['maskedCardNumber'] ?? 'VPA N/A') // Prefer customerVpa, fallback to maskedCardNumber, then to a specific string
-                  : "**** ${transaction['maskedCardNumber'] != null && transaction['maskedCardNumber'] != '' ? transaction['maskedCardNumber'] : 'XXXX'}",
+                  ? (transaction['customerVpa'] ?? transaction['maskedCardNumber']) // Store raw customerVpa or maskedCardNumber for QR
+                  : transaction['maskedCardNumber'], // Store raw maskedCardNumber for Card
               "time": transaction['responseReceivedTime'] ?? 'Unknown Time',
               "amount": "₹${transaction['txnAmount'].toString()}",
               "status": _getTransactionStatus(
@@ -2605,6 +2605,25 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
         ? Color(0xFFCC0000)!
         : Colors.grey[600]!; // default color
 
+    // Revised logic for displayValue
+    final String? cardNumber = transaction['cardNumber'] as String?;
+    final String? transactionType = transaction['type'] as String?;
+    String displayValue;
+
+    if (transactionType == 'qr') {
+      if (cardNumber == null || cardNumber.trim().isEmpty) {
+        displayValue = '****';
+      } else {
+        displayValue = cardNumber;
+      }
+    } else { // Card transaction
+      if (cardNumber == null || cardNumber.trim().isEmpty) {
+        displayValue = '**** ***';
+      } else {
+        displayValue = '**** ' + cardNumber;
+      }
+    }
+
     String amountText = transaction['amount'];
     List<String> amountParts = amountText.split('₹')[1].trim().split('.');
     String wholePart = amountParts[0];
@@ -2709,7 +2728,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      transaction['cardNumber'],
+                      displayValue, // Use the new variable here
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -2890,7 +2909,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
           // In fetchStaticQRTransactions():
           for (var transaction in content) {
             newTransactions.add({
-              "cardNumber": transaction['customerVpa'] ?? 'N/A',
+              "cardNumber": transaction['customerVpa'], // Store raw customerVpa
               "time": transaction['createdAt'] ?? 'Unknown Time',
               "amount": "₹${transaction['transactionAmount'] ?? '0.00'}",
               "status": _getQRTransactionStatus(
@@ -2989,7 +3008,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
 
           for (var transaction in newContent) {
             newTransactions.add({
-              "cardNumber": transaction['customerVpa'] ?? 'N/A',
+              "cardNumber": transaction['customerVpa'], // Store raw customerVpa
               "time": transaction['createdAt'] ?? 'Unknown Time',
               "amount": "₹${transaction['transactionAmount'] ?? '0.0'}",
               "status": _getQRTransactionStatus(
