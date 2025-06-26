@@ -541,7 +541,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         backgroundColor: backgroundColor,
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), // Reduced vertical padding
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Column(
@@ -549,14 +549,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 children: [
                   // Voice Out Toggle Section
                   _buildVoiceOutSection(primaryColor, textColor),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8), // Reduced from 10
                   _buildLanguageDropdown(primaryColor, borderColor, textColor),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16), // Reduced from 20
                   // Divider after QR Sticker line
                   _buildDivider(),
-                  // const SizedBox(height: 24),
-                  const SizedBox(height: 20),
-                  // Language Dropdown
+                  const SizedBox(height: 16),
 
 
                   // Merchant Details - Without Card
@@ -592,7 +590,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               fontSize: 16,
               fontWeight: FontWeight.w500,
               color: textColor,
-              letterSpacing: 0.4,
+              letterSpacing: 0.6,
             ),
           ),
         ),
@@ -747,13 +745,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoTile('Merchant Name', _profileData['merchantName'], textColor),
-        const SizedBox(height: 22), // Increased spacing
+        const SizedBox(height: 18), // Increased spacing
         _buildInfoTile('Mobile Number', _maskMobile(_profileData['mobileNo']), textColor),
-        const SizedBox(height: 22), // Increased spacing
+        const SizedBox(height: 18), // Increased spacing
         _buildInfoTile('Email', _maskEmail(_profileData['email']), textColor),
-        const SizedBox(height: 22), // Increased spacing
+        const SizedBox(height: 18), // Increased spacing
         _buildInfoTile('Address', _profileData['merchantAddress'], textColor),
-        const SizedBox(height: 22), // Increased spacing
+        const SizedBox(height: 18), // Increased spacing
         _buildAccountDetails(textColor),
       ],
     );
@@ -830,22 +828,18 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF383838),
-            fontFamily: 'Montserrat',
-            fontSize: 13, // Increased font size
-            fontWeight: FontWeight.w800,
-            height: 20 / 13,
+            fontSize: 14,
+            fontWeight: FontWeight.w700, // Increased from 600
+            height: 1.2, // Tighter line height
           ),
         ),
-        const SizedBox(height: 5), // Increased spacing
+        const SizedBox(height: 4), // Reduced from 5
         Text(
           displayValue,
           style: const TextStyle(
-            color: Color(0xFF383838),
-            fontFamily: 'Montserrat',
-            fontSize: 15, // Increased font size
+            fontSize: 14, // Reduced from 15
             fontWeight: FontWeight.w500,
-            height: 21 / 15,
+            height: 1.3, // Tighter line height
           ),
         ),
       ],

@@ -234,17 +234,55 @@ class _StaticQRChargeSlipState extends State<StaticQRChargeSlip> {
   }) {
     const double cardPadding = 26.0;
 
-    String formattedDate = '';
-    String formattedTime = '';
+    String formattedDate = 'Unknown Date';
+    String formattedTime = 'Unknown Time';
 
-    try {
-      DateTime parsedDate = DateTime.parse(timestamp).toLocal();
-      formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
-      formattedTime = DateFormat('hh:mm:ss a').format(parsedDate);
-    } catch (e) {
-      print('Error parsing date: $e');
-      formattedDate = 'Unknown Date';
-      formattedTime = 'Unknown Time';
+    if (timestamp != null && timestamp.isNotEmpty) {
+      DateTime? parsedDate;
+      try {
+        // Attempt 1: Try parsing as ISO 8601 format
+        if (timestamp.contains('T') && timestamp.contains('-') && timestamp.contains(':')) {
+          parsedDate = DateTime.parse(timestamp).toLocal();
+        }
+      } catch (e_iso) {
+        // ISO parsing failed, ignore and try next format
+        print('ISO parsing failed for "$timestamp": $e_iso. Trying other formats.');
+        parsedDate = null; // Ensure parsedDate is null if this attempt fails
+      }
+
+      if (parsedDate == null) {
+        try {
+          // Attempt 2: Try parsing "dd MMM yyyy hh.mm a" format (Locale 'en_US' for month names)
+          // Example: "24 Jun 2025 07.08 PM"
+          parsedDate = DateFormat('dd MMM yyyy hh.mm a', 'en_US').parseLoose(timestamp).toLocal();
+        } catch (e_custom) {
+          print('Custom format "dd MMM yyyy hh.mm a" parsing failed for "$timestamp": $e_custom.');
+          parsedDate = null; // Ensure parsedDate is null
+        }
+      }
+
+      // Fallback, if still null and timestamp looks like it might be a different but valid DateTime string
+      if (parsedDate == null) {
+        try {
+          // This is a general attempt, might catch other simple date strings.
+          // Avoid if timestamp is clearly not a date (e.g. "N/A", "Unknown Time")
+          if (!timestamp.toLowerCase().contains("unknown") && !timestamp.toLowerCase().contains("n/a")) {
+            parsedDate = DateTime.parse(timestamp).toLocal();
+            print('Successfully parsed "$timestamp" with direct DateTime.parse fallback.');
+          }
+        } catch(e_fallback) {
+          print('Final DateTime.parse fallback failed for "$timestamp": $e_fallback.');
+          parsedDate = null;
+        }
+      }
+
+      if (parsedDate != null) {
+        formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
+        formattedTime = DateFormat('hh:mm a').format(parsedDate); // Output format is correct
+      } else {
+        print('All parsing attempts failed for timestamp: "$timestamp"');
+        // formattedDate and formattedTime remain 'Unknown Date' / 'Unknown Time'
+      }
     }
 
     return ClipPath(
@@ -990,6 +1028,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _responseData;
   bool _isFirstLoad = true;
   bool _isLoading = false;
+
+  String _formatCarouselDisplayDateTime(String? timestampStr, bool isPosResponseTimeFormat) {
+    if (timestampStr == null || timestampStr.isEmpty) {
+      return 'Unknown'; // Or some other placeholder
+    }
+    try {
+      DateTime parsedDateTime;
+      if (isPosResponseTimeFormat) {
+        // Input format: "24 Jun 2025 07.08 PM"
+        parsedDateTime = DateFormat('dd MMM yyyy hh.mm a', 'en_US').parseLoose(timestampStr).toLocal();
+      } else {
+        // Input format: "2025-05-06T11:31:17+05:30"
+        parsedDateTime = DateTime.parse(timestampStr).toLocal();
+      }
+
+      // Output format: "02:30 PM"
+      return DateFormat('hh:mm a').format(parsedDateTime);
+    } catch (e) {
+      print('Error formatting carousel display date/time for "$timestampStr": $e');
+      if (timestampStr.length > 10) return timestampStr.substring(0, 10) + "...";
+      return timestampStr;
+    }
+  }
+
 
   @override
   void initState() {
@@ -1890,12 +1952,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         "id": tx['terminalId']?.toString() ?? '',
         "amount": formatCurrency((tx['txnAmount'] as num? ?? 0) + (tx['txnAdditionalAmount'] as num? ?? 0)),
         "status": status,
-        "time": _formatTime(tx['txnTime']?.toString() ?? ''),
+        "time": _formatCarouselDisplayDateTime(tx['responseReceivedTime']?.toString(), true), // NEW
         "logo": _getCardLogo(_getCardType(tx)),
         "type": _getCardType(tx),
         "rrn": tx['rRNumber']?.toString() ?? '',
         "rawTxnType": tx['txnType']?.toString() ?? '',
         "rawResponseCode": tx['txnResponseCode']?.toString() ?? '',
+        "originalDataSource": tx,
       });
     }
 
@@ -1908,13 +1971,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         "id": tx['customerVpa']?.toString() ?? '',
         "amount": formatCurrency(double.parse(tx['transactionAmount']?.toString() ?? '0')),
         "status": status,
-        "time": _formatTimestamp(tx['transactionTimestamp']?.toString() ?? ''),
+        "time": _formatCarouselDisplayDateTime(tx['transactionTimestamp']?.toString(), false), // NEW
         "originalFullTimestamp": tx['transactionTimestamp']?.toString() ?? '',
         "logo": "assets/qr.png",
         "type": "QR",
         "rrn": tx['rRNumber']?.toString() ?? '',
         "rawTxnType": tx['purposeCode']?.toString() ?? '',
         "rawResponseCode": tx['gatewayResponseCode']?.toString() ?? '',
+        "originalDataSource": tx,
       });
     }
 
@@ -2144,42 +2208,74 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               return GestureDetector(
                 onTap: () {
-                  if (status == "Failed") {
+                  final String transactionStatus = transaction["status"];
+                  final Map<String, dynamic>? originalTx = transaction["originalDataSource"] as Map<String, dynamic>?;
+
+                  if (transactionStatus == "Failed") {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Failed transactions don\'t have charge slips')),
                     );
                     return;
                   }
 
-                  if (transaction["type"] == "QR") {
+                  // Determine if the source was the QR list (lastFiveTxnAmountForQr)
+                  // QR transactions have 'gatewayTransactionId', POS transactions from 'lastFiveTxnAmount' have 'terminalId'.
+                  bool isFromStaticQrList = originalTx != null && originalTx.containsKey('gatewayTransactionId');
+
+                  if (isFromStaticQrList) {
+                    // This is a Static QR transaction (from lastFiveTxnAmountForQr)
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => StaticQRChargeSlip(
                           transactionData: {
                             "transactionAmount": transaction['amount'].replaceAll('₹', ''),
-                            "transactionTimestamp": transaction['originalFullTimestamp'],
-                            "merchantTransactionId": transaction['rrn'],
-                            "customerVpa": transaction['id'],
+                            "transactionTimestamp": originalTx!['transactionTimestamp'], // Directly from original QR tx object
+                            "merchantTransactionId": transaction['rrn'], // rrn is already in the combined transaction map
+                            "customerVpa": originalTx['customerVpa'], // Directly from original QR tx object
                             "creditVpa": _selectedStaticQR ?? 'N/A',
                           },
                         ),
                       ),
                     );
                   } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TransactionDetailsScreen(
-                          authToken: widget.authToken,
-                          rrn: transaction['rrn'],
-                          terminalIds: widget.terminalIds,
-                          vpaList: widget.vpaList,
-                          transactionStatus: status,
-                          transactionType: transaction["rawTxnType"],
+                    // Assumed from POS list (lastFiveTxnAmount)
+                    // Now check if it's UPI-on-POS or Card-on-POS
+                    bool isUpiOnPos = transaction['type'] == 'qr' || // 'type' in combined map is _getCardType(bin)
+                        (originalTx != null && (originalTx['maskedCardNumber'] == null || originalTx['maskedCardNumber'] == "null"));
+
+                    if (isUpiOnPos) {
+                      // UPI/QR on POS terminal, navigate to StaticQRChargeSlip
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StaticQRChargeSlip(
+                            transactionData: {
+                              "transactionAmount": transaction['amount'].replaceAll('₹', ''),
+                              "transactionTimestamp": originalTx != null ? originalTx['responseReceivedTime'] : transaction['time'],
+                              "merchantTransactionId": transaction['rrn'],
+                              "customerVpa": "N/A",
+                              "creditVpa": _selectedStaticQR ?? 'N/A',
+                            },
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      // Card-based POS transaction
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TransactionDetailsScreen(
+                            authToken: widget.authToken,
+                            rrn: transaction['rrn'],
+                            terminalIds: widget.terminalIds,
+                            vpaList: widget.vpaList,
+                            transactionStatus: transactionStatus,
+                            transactionType: transaction["rawTxnType"],
+                          ),
+                        ),
+                      );
+                    }
                   }
                 },
                 child: Container(
@@ -2250,8 +2346,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         Text(
                           transaction["time"]!,
                           style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
+                            fontSize: 13,
+                            color: Colors.grey[700],
                           ),
                           textAlign: TextAlign.center,
                         ),
