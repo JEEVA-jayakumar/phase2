@@ -117,7 +117,7 @@ class _RiskHoldScreenState extends State<RiskHoldScreen> {
   Widget _buildRiskHoldItem(Map<String, dynamic> item) {
     final bool isInProgress = item['holdRemark']?.isNotEmpty == true;
     final statusText = isInProgress ? 'In Progress' : 'Completed';
-    final statusColor = isInProgress ? Colors.orange : Colors.green;
+    final statusColor = isInProgress ? Color(0xFFEC701E) : Color(0xFF007E33);
 
     return Card(
       color: Colors.white,
