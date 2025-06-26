@@ -14,9 +14,9 @@ import 'package:flutter/services.dart';
 import 'screens/transactions_details.dart';
 import 'screens/Initial_login.dart';
 import 'screens/NotificationScreen.dart';
-// import 'screens/createTicketScreen.dart'; // Duplicate import
-// import 'dart:async'; // Duplicate import
-// import 'package:flutter/material.dart'; // Duplicate import
+import 'screens/createTicketScreen.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -1015,6 +1015,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     fetchTransactionSummary(updateCarousel: true);
   }
+// Add this helper method to determine card type based on BIN
 
   @override
   void dispose() {
@@ -1209,6 +1210,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       } else if (_selectedStaticQR != null && _selectedStaticQR!.isNotEmpty) {
         url += 'tid=&vpa=${Uri.encodeComponent(_selectedStaticQR!)}';
       } else {
+        // If neither tid nor vpa is available, don't make the API call
         setState(() {
           _responseData = null;
           _isLoading = false;
@@ -1314,6 +1316,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'vasanth@hdfc'
   ];
 
+  // final List<Map<String, String>> links = [
+  //   {"icon": Icons.compare_arrows_sharp, "label": "My Transaction", "key": "transaction"},
+  //   {"icon": Icons.notifications_active_outlined, "label": "My Notification", "key": "notification"},
+  //   {"icon": Icons.shield, "label": "Risk Hold", "key": "Risk Hold"},
+  //   {"icon": Icons.insert_chart, "label": "My Report", "key": "report"},
+  //   {"icon": Icons.support_agent, "label": "Support Center", "key": "support"},
+  // ];
+
+
+
   Color staticQRBackgroundColor = const Color(0xFFEBEBEB);
 
 
@@ -1360,7 +1372,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
+                    // Use conditional layout based on what's available
                     if (hasTerminal && hasQR)
+                    // Both available - use Row with Expanded
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1370,8 +1384,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ],
                       )
                     else if (hasTerminal)
+                    // Only Terminal - full width
                       _buildTerminalContainer(true)
                     else if (hasQR || _selectedStaticQR != null)
+                      // Only Static QR - full width
                         _buildStaticQRContainer(true),
 
                     const SizedBox(height: 16),
@@ -1397,6 +1413,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+// Extract Terminal container as a separate method
   Widget _buildTerminalContainer(bool isSingle) {
     return Container(
       constraints: isSingle ? null : BoxConstraints(minHeight: 200),
@@ -1425,6 +1442,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
 
+          // If single container, arrange totals side by side
           if (isSingle)
             IntrinsicHeight(
               child: Row(
@@ -1480,6 +1498,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             )
           else
+          // If dual containers, stack vertically
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1511,6 +1530,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+// Extract Static QR container as a separate method
   Widget _buildStaticQRContainer(bool isSingle) {
     return Container(
       constraints: isSingle ? null : BoxConstraints(minHeight: 200),
@@ -1541,6 +1561,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
 
+          // If single container, arrange totals side by side
           if (isSingle)
             IntrinsicHeight(
               child: Row(
@@ -1596,6 +1617,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             )
           else
+          // If dual containers, stack vertically
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1627,9 +1649,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+// Helper method to build formatted currency with larger font for main digits
   Widget _buildFormattedCurrency(num amount) {
     String formattedAmount = formatCurrency(amount);
 
+
+    // Split the formatted string to identify rupee symbol and decimal parts
     RegExp regExp = RegExp(r'(₹\s*)(\d+)(\.?\d*)');
     Match? match = regExp.firstMatch(formattedAmount);
 
@@ -1653,7 +1678,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             TextSpan(
               text: mainDigits,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18, // Larger font for main digits
                 fontWeight: FontWeight.bold,
                 color: customPurple,
                 letterSpacing: -0.5,
@@ -1673,6 +1698,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       );
     }
 
+    // Fallback if regex doesn't match
     return Text(
       formattedAmount,
       style: TextStyle(
@@ -1683,65 +1709,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
+// Add this helper method to determine card type based on BIN
   String _getCardType(dynamic transaction) {
-    if (transaction is! Map<String, dynamic>) {
-      return 'qr';
+
+    if (transaction is! Map<String, dynamic>) return 'qr';
+
+    // Try to get the BIN directly if available
+    if (transaction['bin'] != null && transaction['bin'].toString().isNotEmpty) {
+      return _determineCardTypeFromBin(transaction['bin'].toString());
     }
 
-    // ======== NEW TOP-PRIORITY QR CHECKS ========
-    // Check 1: 'customerVpa' is present and not empty
-    if (transaction.containsKey('customerVpa') &&
-        transaction['customerVpa'] != null &&
-        transaction['customerVpa'].toString().trim().isNotEmpty) {
-      return 'qr';
-    }
 
-    // Check 2: 'purposeCode' is present, not empty, and indicates QR (e.g., '00')
-    // Adjust '00' if other codes also definitively mean QR for your system,
-    // or if a broader check for just presence of purposeCode is sufficient initially.
-    if (transaction.containsKey('purposeCode') &&
-        transaction['purposeCode'] != null &&
-        transaction['purposeCode'].toString() == '00') { // Example: '00' for UPI QR
-      return 'qr';
-    }
-    // You could add more 'else if' for other specific purposeCodes if needed:
-    // else if (transaction.containsKey('purposeCode') &&
-    //          transaction['purposeCode'] != null &&
-    //          transaction['purposeCode'].toString() == 'XX') { // Another QR purpose code
-    //   return 'qr';
-    // }
-    // ======== END OF NEW TOP-PRIORITY QR CHECKS ========
-
-    // If not identified as QR by specific fields, proceed to BIN/maskedCardNumber check
-    if (transaction.containsKey('bin') &&
-        transaction['bin'] != null &&
-        transaction['bin'].toString().trim().isNotEmpty) {
-      // Ensure _determineCardTypeFromBin is called with a non-empty string
-      return _determineCardTypeFromBin(transaction['bin'].toString().trim());
-    }
-
-    if (transaction.containsKey('maskedCardNumber') &&
-        transaction['maskedCardNumber'] != null &&
-        transaction['maskedCardNumber'].toString().trim().isNotEmpty) {
-      final masked = transaction['maskedCardNumber'].toString().trim();
+    // Fallback to masked card number if BIN not available
+    if (transaction['maskedCardNumber'] != null) {
+      final masked = transaction['maskedCardNumber'].toString();
+      // Extract numbers from masked card (e.g., "**** 1234" -> "1234")
       final digits = masked.replaceAll(RegExp(r'[^0-9]'), '');
       if (digits.length >= 6) {
         return _determineCardTypeFromBin(digits.substring(0, 6));
       }
     }
 
-    // Default fallback if no other criteria match
-    return 'qr';
+    return 'qr'; // Default if no card info available
   }
 
   String _determineCardTypeFromBin(String binStr) {
     if (binStr.isEmpty) return 'qr';
-    if (binStr.length < 6) binStr = binStr.padLeft(6, '0');
-    else if (binStr.length > 6) binStr = binStr.substring(0, 6);
+
+    // Pad to 6 digits if needed
+    if (binStr.length < 6) {
+      binStr = binStr.padLeft(6, '0');
+    } else if (binStr.length > 6) {
+      binStr = binStr.substring(0, 6);
+    }
+
     int? bin = int.tryParse(binStr);
     if (bin == null) return 'qr';
 
+    // Check ranges
     if (binRangeVisa(bin)) return 'visa';
     if (binRangeMaster(bin)) return 'master';
     if (binRangeDiscover(bin)) return 'rupay';
@@ -1749,8 +1754,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (binRangeJcb(bin)) return 'rupay';
     if (binRangeRuPay(bin)) return 'rupay';
     if (binRangeAE(bin)) return 'amex';
+
     return 'qr';
   }
+
 
   bool binRangeVisa(int bin) {
     return bin >= 400000 && bin <= 499999;
@@ -1853,70 +1860,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final type = txnType.toString().trim();
     final response = txnResponseCode.toString().trim();
 
+    // Check for Void first
     if (type == "02") return "Void";
+
+    // Then check response code
     if (response == "00") return "Success";
+
     return "Failed";
   }
 
   String _getQRTransactionStatus(dynamic txnResponseCode) {
     if (txnResponseCode == null) return "Failed";
+
     final response = txnResponseCode.toString().trim();
     return (response == "00") ? "Success" : "Failed";
   }
 
   Widget _buildTransactionCarousel(Map<String, dynamic> responseData) {
+
     final terminalTransactions = (responseData['lastFiveTxnAmount'] as List?) ?? [];
     final qrTransactions = (responseData['lastFiveTxnAmountForQr'] as List?) ?? [];
+    // For terminal transactions
     List<Map<String, dynamic>> combinedTransactions = [];
-
     for (var i = 0; i < min(5, terminalTransactions.length); i++) {
       final tx = terminalTransactions[i] as Map<String, dynamic>;
-      print("DEBUG_POS_TXNTIME: Raw tx['txnTime'] = ${tx['txnTime']}, Type = ${tx['txnTime']?.runtimeType}");
       final status = _getTransactionStatus(tx['txnType'], tx['txnResponseCode'] ?? 'Unknown');
-      final String cardType = _getCardType(tx);
-      Map<String, dynamic> transactionEntry;
 
-      if (cardType == "QR") {
-        transactionEntry = {
-          "id": tx['customerVpa']?.toString() ?? tx['maskedCardNumber']?.toString() ?? '',
-          "amount": formatCurrency((tx['txnAmount'] as num? ?? 0) + (tx['txnAdditionalAmount'] as num? ?? 0)),
-          "status": status,
-          "time": _formatTime(tx['txnTime']?.toString() ?? ''),
-          "logo": _getCardLogo(cardType),
-          "type": cardType,
-          "rrn": tx['rRNumber']?.toString() ?? '',
-          "rawTxnType": tx['purposeCode']?.toString() ?? tx['txnType']?.toString() ?? '',
-          "rawResponseCode": tx['txnResponseCode']?.toString() ?? '',
-          "originalFullTimestamp": tx['transactionTimestamp']?.toString() ?? null,
-          "rawTxnTime": tx['txnTime']?.toString() ?? '',
-        };
-      } else { // Card transaction
-        transactionEntry = {
-          "id": tx['maskedCardNumber']?.toString() ?? (tx['terminalId']?.toString() ?? ''),
-          "amount": formatCurrency((tx['txnAmount'] as num? ?? 0) + (tx['txnAdditionalAmount'] as num? ?? 0)),
-          "status": status,
-          "time": _formatTime(tx['txnTime']?.toString() ?? ''),
-          "logo": _getCardLogo(cardType),
-          "type": cardType,
-          "rrn": tx['rRNumber']?.toString() ?? '',
-          "rawTxnType": tx['txnType']?.toString() ?? '',
-          "rawResponseCode": tx['txnResponseCode']?.toString() ?? '',
-          "originalFullTimestamp": null,
-          "rawTxnTime": tx['txnTime']?.toString() ?? '',
-        };
-      }
-      combinedTransactions.add(transactionEntry);
+      combinedTransactions.add({
+        "id": tx['terminalId']?.toString() ?? '',
+        "amount": formatCurrency((tx['txnAmount'] as num? ?? 0) + (tx['txnAdditionalAmount'] as num? ?? 0)),
+        "status": status,
+        "time": _formatTime(tx['txnTime']?.toString() ?? ''),
+        "logo": _getCardLogo(_getCardType(tx)),
+        "type": _getCardType(tx),
+        "rrn": tx['rRNumber']?.toString() ?? '',
+        "rawTxnType": tx['txnType']?.toString() ?? '',
+        "rawResponseCode": tx['txnResponseCode']?.toString() ?? '',
+      });
     }
 
+    // For QR transactions
     for (var i = 0; i < min(5, qrTransactions.length); i++) {
       final tx = qrTransactions[i] as Map<String, dynamic>;
       final status = _getQRTransactionStatus(tx['gatewayResponseCode'] ?? 'Unknown');
-
-      String? idToUse = tx['merchantTransactionId']?.toString();
-      if (idToUse == null || idToUse.trim().isEmpty) {
-        // 'rrn' is the field name in the API response for lastFiveTxnAmountForQr for the RRN
-        idToUse = tx['rrn']?.toString();
-      }
 
       combinedTransactions.add({
         "id": tx['customerVpa']?.toString() ?? '',
@@ -1925,13 +1911,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         "time": _formatTimestamp(tx['transactionTimestamp']?.toString() ?? ''),
         "originalFullTimestamp": tx['transactionTimestamp']?.toString() ?? '',
         "logo": "assets/qr.png",
-        "type": "qr", // Ensure this is "qr" (lowercase)
-        "rrn": idToUse ?? '', // Use the determined idToUse here
+        "type": "QR",
+        "rrn": tx['rRNumber']?.toString() ?? '',
         "rawTxnType": tx['purposeCode']?.toString() ?? '',
         "rawResponseCode": tx['gatewayResponseCode']?.toString() ?? '',
-        "rawTxnTime": null, // As per existing code
       });
     }
+
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1988,6 +1974,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             itemCount: combinedTransactions.length + 1,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             itemBuilder: (context, index) {
+              // If it's the last item, show "View All Transactions" card
               if (index == combinedTransactions.length) {
                 return GestureDetector(
                   onTap: () {
@@ -2083,13 +2070,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 if (match != null) {
                   final rupeeSymbol = match.group(1) ?? '';
                   final mainDigits = match.group(2) ?? '';
-                  final decimalPart = match.group(3) ?? '';
+                  final decimalPart = match.group(3) ?? ''; // Includes '.'
 
                   List<TextSpan> spans = [
                     TextSpan(
                       text: rupeeSymbol,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13, // Smaller rupee symbol
                         fontWeight: FontWeight.w700,
                         color: customPurple,
                       ),
@@ -2097,7 +2084,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     TextSpan(
                       text: mainDigits,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16, // Larger main digits
                         fontWeight: FontWeight.w700,
                         color: customPurple,
                       ),
@@ -2109,7 +2096,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       TextSpan(
                         text: decimalPart,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13, // Smaller decimal part
                           fontWeight: FontWeight.w700,
                           color: customPurple,
                         ),
@@ -2122,7 +2109,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       TextSpan(
                         text: lakhsSuffix,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13, // Style similar to decimal part
                           fontWeight: FontWeight.w700,
                           color: customPurple,
                         ),
@@ -2131,6 +2118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   }
                   return spans;
                 } else {
+                  // Fallback if regex doesn't match
                   return [
                     TextSpan(
                       text: amount,
@@ -2143,6 +2131,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ];
                 }
               }
+              // Regular transaction card
               final transaction = combinedTransactions[index];
               final status = transaction["status"];
               Color statusColor = (status == "Success")
@@ -2155,81 +2144,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               return GestureDetector(
                 onTap: () {
-                  if (transaction["status"] == "Failed") {
+                  if (status == "Failed") {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Failed transactions don\'t have charge slips')),
                     );
                     return;
                   }
 
-                  if (transaction["type"] == "qr") {
-                    String amountString = transaction['amount'].toString().replaceAll('₹', '');
-                    if (amountString.contains(" Lakhs")) {
-                      try {
-                        double lakhsValue = double.parse(amountString.replaceAll(" Lakhs", "").trim());
-                        amountString = (lakhsValue * 100000).toStringAsFixed(2);
-                      } catch (e) {
-                        amountString = "0.00";
-                      }
-                    } else {
-                      amountString = amountString.replaceAll(",", "");
-                    }
-
-                    String timestampForChargeSlip = transaction['originalFullTimestamp']?.toString() ?? '';
-                    if (timestampForChargeSlip.isEmpty && transaction['rawTxnTime'] != null && transaction['rawTxnTime'].toString().length == 6) {
-                      try {
-                        final now = DateTime.now();
-                        final hour = int.parse(transaction['rawTxnTime'].toString().substring(0,2));
-                        final minute = int.parse(transaction['rawTxnTime'].toString().substring(2,4));
-                        final second = int.parse(transaction['rawTxnTime'].toString().substring(4,6));
-                        if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59) {
-                          timestampForChargeSlip = DateTime(now.year, now.month, now.day, hour, minute, second).toIso8601String();
-                        } else {
-                          timestampForChargeSlip = DateTime.now().toIso8601String();
-                        }
-                      } catch(e) {
-                        timestampForChargeSlip = DateTime.now().toIso8601String();
-                      }
-                    } else if (timestampForChargeSlip.isEmpty) {
-                      timestampForChargeSlip = DateTime.now().toIso8601String();
-                    }
-
-                    // **** CRUCIAL RRN HANDLING ****
-                    String? rrnOriginal = transaction['rrn']?.toString(); // Get the original rrn string
-                    String? rrnValueForSlip = null; // Default to null
-
-                    if (rrnOriginal != null &&
-                        rrnOriginal.trim().isNotEmpty &&
-                        rrnOriginal.trim().toLowerCase() != 'null') {
-                      rrnValueForSlip = rrnOriginal.trim(); // Use the trimmed original if valid
-                    }
-                    // *****************************
-
+                  if (transaction["type"] == "QR") {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => StaticQRChargeSlip(
                           transactionData: {
-                            "transactionAmount": amountString,
-                            "transactionTimestamp": timestampForChargeSlip,
-                            "merchantTransactionId": rrnValueForSlip, // USE THE NEW VARIABLE HERE
-                            "customerVpa": transaction['id']?.toString() ?? '',
+                            "transactionAmount": transaction['amount'].replaceAll('₹', ''),
+                            "transactionTimestamp": transaction['originalFullTimestamp'],
+                            "merchantTransactionId": transaction['rrn'],
+                            "customerVpa": transaction['id'],
                             "creditVpa": _selectedStaticQR ?? 'N/A',
                           },
                         ),
                       ),
                     );
-                  } else { // Card or other non-QR, non-Failed type
+                  } else {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => TransactionDetailsScreen(
                           authToken: widget.authToken,
-                          rrn: transaction['rrn']?.toString() ?? '', // Original RRN for cards
+                          rrn: transaction['rrn'],
                           terminalIds: widget.terminalIds,
                           vpaList: widget.vpaList,
-                          transactionStatus: transaction["status"]?.toString() ?? 'Unknown',
-                          transactionType: transaction["rawTxnType"]?.toString() ?? '',
+                          transactionStatus: status,
+                          transactionType: transaction["rawTxnType"],
                         ),
                       ),
                     );
@@ -2256,6 +2203,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        // Professional bordered container for card/QR image
                         Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
@@ -2317,6 +2265,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             if (status == "Void")
                               Icon(Icons.error_sharp, size: 9.7, color: Color(0xFFEC701E)),
                             const SizedBox(width: 4),
+
+                            // ? Color(0xFF007E33)!
+                            //                   : (status == "Void")
+                            //                   ? Color(0xFFEC701E)!
+                            //                   : (status == "Failed")
+                            //                   ? Color(0xFFCC0000)!
+                            //                   : Colors.grey[600]!;
                             Text(
                               status,
                               style: TextStyle(
@@ -2340,45 +2295,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   String _formatTimestamp(String timestamp) {
-    if (timestamp == null || timestamp.trim().isEmpty) {
-      // print('Warning: _formatTimestamp received null or empty input.'); // Optional
-      return '--:--';
-    }
-    try {
-      final dt = DateTime.parse(timestamp).toLocal();
-      return DateFormat('hh:mm a').format(dt);
-    } catch (e) {
-      // print('Error parsing timestamp in _formatTimestamp: $timestamp - $e'); // Optional
-      return '--:--';
-    }
+    final dt = DateTime.parse(timestamp);
+    return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute
+        .toString()
+        .padLeft(2, '0')}";
   }
 
-  String _formatTime(String timeStr) {
-    if (timeStr == null || timeStr.trim().isEmpty) {
-      // print('Warning: _formatTime received null or empty input.'); // Optional: remove prints for prod
-      return '--:--';
-    }
-    if (timeStr.length == 6 && RegExp(r'^[0-9]{6}$').hasMatch(timeStr)) {
-      try {
-        final hour = int.parse(timeStr.substring(0, 2));
-        final minute = int.parse(timeStr.substring(2, 4));
-        final second = int.parse(timeStr.substring(4, 6));
-        if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59) {
-          final now = DateTime.now();
-          final dt = DateTime(now.year, now.month, now.day, hour, minute, second);
-          return DateFormat('hh:mm a').format(dt);
-        } else {
-          // print('Warning: _formatTime received invalid HHmmss values: $timeStr'); // Optional
-          return '--:--';
-        }
-      } catch (e) {
-        // print('Error parsing HHmmss string in _formatTime: $timeStr - $e'); // Optional
-        return '--:--';
-      }
-    } else {
-      // print('Warning: _formatTime received non-HHmmss format: $timeStr'); // Optional
-      return '--:--';
-    }
+  String _formatTime(String time) {
+    return "${time.substring(0, 2)}:${time.substring(2, 4)}";
   }
 
   Widget _buildQuickLinks() {
@@ -2471,10 +2395,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _navigateToScreen(BuildContext context, String? screenKey) {
     switch (screenKey) {
       case "transaction":
+      // For transactions, we'll navigate through the parent MainScreen
+      // Find the parent MainScreen using the context
         final mainScreenState = context.findAncestorStateOfType<_MainScreenState>();
         if (mainScreenState != null) {
-          mainScreenState._onItemTapped(1);
+          // If we found MainScreen, use its navigation method
+          mainScreenState._onItemTapped(1); // Index 1 is for Transactions
         } else {
+          // Fallback if not found (shouldn't happen in normal usage)
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -2488,8 +2416,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         break;
       case "settlement":
+      // Navigate to Settlement screen
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => SettlementScreen()));
         break;
       case "notification":
+      // Navigate to Notification screen
         Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationScreen(authToken: widget.authToken)));
         break;
       case "Risk Hold":
@@ -2500,28 +2431,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         );
       case "report":
+      // Use the MainScreen navigation to report tab
         final mainScreenState = context.findAncestorStateOfType<_MainScreenState>();
         if (mainScreenState != null) {
-          mainScreenState._onItemTapped(2);
+          mainScreenState._onItemTapped(2); // Index 2 is for Report
         } else {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => TransactionReportPage(authToken: widget.authToken,       terminalIds: widget.terminalIds,
+              builder: (context) => TransactionReportPage(authToken: widget.authToken,       terminalIds: widget.terminalIds,  // Add this
                 vpaList: widget.vpaList,         ),
             ),
           );
         }
         break;
       case "support":
+      // Use the MainScreen navigation to support tab
         final mainScreenState = context.findAncestorStateOfType<_MainScreenState>();
         if (mainScreenState != null) {
-          mainScreenState._onItemTapped(4);
+          mainScreenState._onItemTapped(4); // Index 4 is for Support
         } else {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => SupportScreen(authToken: widget.authToken,        terminalIds: widget.terminalIds,
+              builder: (context) => SupportScreen(authToken: widget.authToken,        terminalIds: widget.terminalIds,  // Add this
                 vpaList: widget.vpaList,          ),
             ),
           );
@@ -2532,6 +2465,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 }
+// Replace your CustomDropdownField with this updated version
 class CustomDropdownField extends StatefulWidget {
   final String label;
   final String value;
@@ -2641,6 +2575,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                         ),
                         child: Row(
                           children: [
+                            // Radio button
                             Container(
                               width: 18,
                               height: 18,
@@ -2666,6 +2601,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                                   : null,
                             ),
                             const SizedBox(width: 12),
+                            // Text
                             Expanded(
                               child: Text(
                                 item,
@@ -2709,6 +2645,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Label
         Text(
           widget.label,
           style: TextStyle(
@@ -2720,6 +2657,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
         ),
         const SizedBox(height: 8),
 
+        // Input Field
         GestureDetector(
           key: _dropdownKey,
           onTap: _toggleDropdown,
@@ -2780,13 +2718,14 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
   }
 }
 
+// Optional: Add a barrier to close dropdown when tapping outside
 class CustomDropdownFieldWithBarrier extends StatefulWidget {
   final String label;
   final String value;
   final List<String> items;
   final Function(String?) onChanged;
   final Color backgroundColor;
-  final bool showAddButton;
+  final bool showAddButton; // New property
   final VoidCallback? onAddPressed;
 
   const CustomDropdownFieldWithBarrier({
@@ -2841,6 +2780,7 @@ class _CustomDropdownFieldWithBarrierState extends State<CustomDropdownFieldWith
     final spaceBelow = screenHeight - (position.dy + size.height + 100);
     final showAbove = spaceBelow < dropdownHeight && position.dy > dropdownHeight;
 
+    // Create barrier to detect taps outside
     _barrierEntry = OverlayEntry(
       builder: (context) => GestureDetector(
         onTap: _closeDropdown,
@@ -2907,6 +2847,7 @@ class _CustomDropdownFieldWithBarrierState extends State<CustomDropdownFieldWith
                         ),
                         child: Row(
                           children: [
+                            // Radio button
                             Container(
                               width: 18,
                               height: 18,
@@ -2932,6 +2873,7 @@ class _CustomDropdownFieldWithBarrierState extends State<CustomDropdownFieldWith
                                   : null,
                             ),
                             const SizedBox(width: 12),
+                            // Text
                             Expanded(
                               child: Text(
                                 item,
@@ -2976,6 +2918,7 @@ class _CustomDropdownFieldWithBarrierState extends State<CustomDropdownFieldWith
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Label
         Text(
           widget.label,
           style: TextStyle(
@@ -2986,6 +2929,7 @@ class _CustomDropdownFieldWithBarrierState extends State<CustomDropdownFieldWith
           ),
         ),
         const SizedBox(height: 8),
+        // Only the dropdown trigger field
         GestureDetector(
           key: _dropdownKey,
           onTap: _toggleDropdown,
@@ -3045,4 +2989,3 @@ class _CustomDropdownFieldWithBarrierState extends State<CustomDropdownFieldWith
     );
   }
 }
-

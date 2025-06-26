@@ -13,6 +13,32 @@ Color customPurple = Color(0xFF61116A);
 // Global flag to prevent multiple simultaneous navigation attempts
 bool _isNavigatingToLogin = false;
 
+// User-friendly error message helper
+String _getUserFriendlyErrorMessage(String errorType, int? statusCode, String originalError) {
+  switch (statusCode) {
+    case 404:
+      return errorType == 'Transaction'
+          ? "No reports available\nDownload at least one report to view Transaction Report"
+          : "No reports available\nGenerate at least one report to view Settlement Report";
+    case 400:
+      return "Invalid request. Please try again.";
+    case 403:
+      return "Access denied. Please check your permissions.";
+    case 500:
+      return "Server error. Please try again later.";
+    case 503:
+      return "Service temporarily unavailable. Please try again later.";
+    default:
+      if (originalError.toLowerCase().contains('timeout')) {
+        return "Request timeout. Please check your internet connection and try again.";
+      } else if (originalError.toLowerCase().contains('network') ||
+          originalError.toLowerCase().contains('connection')) {
+        return "Network error. Please check your internet connection.";
+      }
+      return "Unable to load data. Please try again.";
+  }
+}
+
 Future<http.Response> handleResponse(Future<http.Response> apiCall) async {
   try {
     final response = await apiCall;
@@ -86,6 +112,10 @@ class _TransactionReportPageState extends State<TransactionReportPage>
   List<dynamic> _settlements = [];
   bool _isLoading = false;
   String _errorMessage = '';
+  int? _lastErrorStatusCode; // Store status code for better error handling
+
+  // Track which tab's data is currently being loaded
+  String _currentLoadingType = '';
 
   @override
   void initState() {
@@ -93,21 +123,29 @@ class _TransactionReportPageState extends State<TransactionReportPage>
     _tabController = TabController(length: 2, vsync: this);
     print('Initializing TransactionReportPage with token: ${widget.authToken.substring(0, 10)}...');
 
-    // Load initial data
+    // Load initial data for the first tab (Transaction)
     _fetchTransactionData();
 
-    // Tab change listener - ADD setState here
+    // Enhanced tab change listener
     _tabController.addListener(() {
-      if (_tabController.indexIsChanging) return;
+      // Only proceed when tab change is complete (not during animation)
+      if (_tabController.indexIsChanging) {
+        print('Tab is changing, waiting for completion...');
+        return;
+      }
 
       print('Tab changed to index: ${_tabController.index}');
 
-      // Add setState to rebuild FAB
+      // Rebuild UI to show/hide FAB
       setState(() {});
 
-      if (_tabController.index == 0 && _transactions.isEmpty && !_isLoading) {
+      // Always fetch data when switching tabs, regardless of current data state
+      // This ensures fresh data and handles cases where previous calls failed
+      if (_tabController.index == 0) {
+        print('Switched to Transaction tab - fetching transaction data');
         _fetchTransactionData();
-      } else if (_tabController.index == 1 && _settlements.isEmpty && !_isLoading) {
+      } else if (_tabController.index == 1) {
+        print('Switched to Settlement tab - fetching settlement data');
         _fetchSettlementData();
       }
     });
@@ -125,15 +163,17 @@ class _TransactionReportPageState extends State<TransactionReportPage>
   Future<void> _fetchData(String type) async {
     print('Fetching $type data...');
 
-    // Prevent multiple simultaneous requests
-    if (_isLoading) {
-      print('Already loading, skipping request for $type');
+    // Prevent multiple simultaneous requests for the SAME type only
+    if (_isLoading && _currentLoadingType == type) {
+      print('Already loading $type data, skipping request');
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _currentLoadingType = type;
       _errorMessage = '';
+      _lastErrorStatusCode = null;
     });
 
     try {
@@ -187,12 +227,15 @@ class _TransactionReportPageState extends State<TransactionReportPage>
               print('Settlements loaded: ${_settlements.length}');
             }
             _isLoading = false;
+            _currentLoadingType = '';
           });
         } else {
           throw Exception(data['message'] ?? 'Invalid response structure - Status: ${data['status']}');
         }
       } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase ?? 'Unknown error'}');
+        // Handle specific HTTP status codes with user-friendly messages
+        _lastErrorStatusCode = response.statusCode;
+        throw Exception('HTTP_${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching $type data: $e');
@@ -202,22 +245,34 @@ class _TransactionReportPageState extends State<TransactionReportPage>
         print('Auth error detected, user will be redirected to login');
         setState(() {
           _isLoading = false;
+          _currentLoadingType = '';
         });
         return;
       }
 
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Failed to load $type data: ${e.toString().replaceAll('Exception: ', '')}';
+        _currentLoadingType = '';
+        _errorMessage = _getUserFriendlyErrorMessage(type, _lastErrorStatusCode, e.toString());
       });
     }
   }
 
   Future<void> _refreshData() async {
+    print('Refreshing data for tab index: ${_tabController.index}');
+
+    // Clear error state before refreshing
+    setState(() {
+      _errorMessage = '';
+      _lastErrorStatusCode = null;
+    });
+
     if (_tabController.index == 0) {
+      print('Refreshing transaction data');
       _transactions.clear();
       await _fetchTransactionData();
     } else {
+      print('Refreshing settlement data');
       _settlements.clear();
       await _fetchSettlementData();
     }
@@ -247,14 +302,14 @@ class _TransactionReportPageState extends State<TransactionReportPage>
       print('Error launching file: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error opening file: ${e.toString()}'),
+          content: Text('Unable to open file. Please try again.'),
           backgroundColor: Colors.redAccent,
         ),
       );
     }
   }
 
-  // New method to handle settlement report generation
+  // Enhanced method to handle settlement report generation with better error handling
   Future<void> _generateSettlementReport() async {
     try {
       // Show loading dialog
@@ -325,7 +380,9 @@ class _TransactionReportPageState extends State<TransactionReportPage>
           throw Exception(data['message'] ?? 'Failed to generate settlement report');
         }
       } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase ?? 'Unknown error'}');
+        // Use user-friendly error message for report generation
+        String errorMessage = _getUserFriendlyErrorMessage('Settlement', response.statusCode, 'Report generation failed');
+        throw Exception(errorMessage);
       }
     } catch (e) {
       // Close loading dialog if still open
@@ -335,10 +392,16 @@ class _TransactionReportPageState extends State<TransactionReportPage>
 
       print('Error generating settlement report: $e');
 
+      // Show user-friendly error message
+      String displayError = e.toString().contains('Exception:')
+          ? e.toString().replaceAll('Exception: ', '')
+          : 'Unable to generate settlement report. Please try again.';
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to generate settlement report: ${e.toString().replaceAll('Exception: ', '')}'),
+          content: Text(displayError),
           backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -483,7 +546,10 @@ class _TransactionReportPageState extends State<TransactionReportPage>
   }
 
   Widget _buildTabContent(List<dynamic> items) {
-    if (_isLoading) {
+    String currentTabType = _tabController.index == 0 ? 'Transaction' : 'Settlement';
+    bool isCurrentTabLoading = _isLoading && _currentLoadingType == currentTabType;
+
+    if (isCurrentTabLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -494,7 +560,7 @@ class _TransactionReportPageState extends State<TransactionReportPage>
             ),
             const SizedBox(height: 16),
             Text(
-              'Loading data...',
+              'Loading ${currentTabType.toLowerCase()} data...',
               style: TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 16,
@@ -508,47 +574,88 @@ class _TransactionReportPageState extends State<TransactionReportPage>
     }
 
     if (_errorMessage.isNotEmpty) {
+      // Enhanced error display with appropriate icon based on error type
+      IconData errorIcon = Icons.description_outlined;
+      Color iconColor = Colors.grey.shade400;
+
+      if (_lastErrorStatusCode == 404) {
+        errorIcon = Icons.folder_open_outlined;
+        iconColor = Colors.grey.shade400;
+      } else if (_errorMessage.contains('network') || _errorMessage.contains('connection')) {
+        errorIcon = Icons.wifi_off_outlined;
+        iconColor = Colors.redAccent;
+      } else if (_errorMessage.contains('timeout')) {
+        errorIcon = Icons.access_time_outlined;
+        iconColor = Colors.redAccent;
+      } else if (!(_lastErrorStatusCode == 404)) {
+        errorIcon = Icons.error_outline;
+        iconColor = Colors.redAccent;
+      }
+
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.redAccent,
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: iconColor == Colors.redAccent ? Colors.red.shade50 : Colors.grey.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  errorIcon,
+                  size: 48,
+                  color: iconColor,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Text(
-                _errorMessage,
-                style: const TextStyle(
+                _errorMessage.split('\n').first,
+                style: TextStyle(
                   fontFamily: 'Montserrat',
-                  color: Colors.redAccent,
+                  color: Colors.grey.shade800,
                   fontWeight: FontWeight.w600,
-                  fontSize: 16,
+                  fontSize: 18,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _errorMessage = '';
-                  });
-                  _refreshData();
-                },
-                icon: Icon(Icons.refresh),
-                label: Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: customPurple,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              if (_errorMessage.contains('\n')) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _errorMessage.split('\n').skip(1).join('\n'),
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 32),
+              if (_lastErrorStatusCode != 404)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _errorMessage = '';
+                      _lastErrorStatusCode = null;
+                    });
+                    _refreshData();
+                  },
+                  icon: Icon(Icons.refresh, size: 20),
+                  label: Text('Try Again'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: customPurple,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -560,28 +667,48 @@ class _TransactionReportPageState extends State<TransactionReportPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.insert_drive_file_outlined,
-              size: 64,
-              color: Colors.grey.shade300,
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.description_outlined,
+                size: 48,
+                color: Colors.grey.shade400,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
               "No reports available",
               style: TextStyle(
                 fontFamily: 'Montserrat',
-                color: Colors.grey.shade600,
+                color: Colors.grey.shade800,
                 fontSize: 18,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
+            Text(
+              currentTabType == 'Transaction'
+                  ? "Download at least one report to view Transaction Report"
+                  : "Generate at least one report to view Settlement Report",
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
             Text(
               "Pull down to refresh",
               style: TextStyle(
                 fontFamily: 'Montserrat',
                 color: Colors.grey.shade500,
-                fontSize: 14,
+                fontSize: 12,
               ),
             ),
           ],
@@ -688,4 +815,3 @@ class _TransactionReportPageState extends State<TransactionReportPage>
     );
   }
 }
-
