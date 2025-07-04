@@ -513,6 +513,13 @@
             </list>
           </value>
         </entry>
+        <entry key="sticky_headers">
+          <value>
+            <list>
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/sticky_headers-0.3.0+2/lib" />
+            </list>
+          </value>
+        </entry>
         <entry key="stream_channel">
           <value>
             <list>
@@ -732,6 +739,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/source_span-1.10.1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/sprintf-7.0.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/stack_trace-1.12.1/lib" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/sticky_headers-0.3.0+2/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/stream_channel-2.1.4/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/string_scanner-1.4.1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
