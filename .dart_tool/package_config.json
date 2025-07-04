@@ -302,6 +302,54 @@
       "languageVersion": "2.12"
     },
     {
+      "name": "open_file",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file-3.5.10",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "open_file_android",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file_android-1.0.6",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "open_file_ios",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file_ios-1.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "open_file_linux",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file_linux-0.0.5",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "open_file_mac",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file_mac-1.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "open_file_platform_interface",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file_platform_interface-1.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "open_file_web",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file_web-0.0.4",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "open_file_windows",
+      "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/open_file_windows-0.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
       "name": "path",
       "rootUri": "file:///Users/bijlipay/.pub-cache/hosted/pub.dev/path-1.9.1",
       "packageUri": "lib/",
@@ -632,7 +680,7 @@
       "languageVersion": "3.7"
     }
   ],
-  "generated": "2025-07-04T08:01:48.220395Z",
+  "generated": "2025-07-04T08:48:28.163414Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///opt/homebrew/Caskroom/flutter/3.29.2/flutter",
