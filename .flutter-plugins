@@ -1,6 +1,10 @@
 # This is a generated file; do not edit or check into version control.
-file_picker=/Users/bijlipay/.pub-cache/hosted/pub.dev/file_picker-10.1.9/
+file_picker=/Users/bijlipay/.pub-cache/hosted/pub.dev/file_picker-10.2.0/
 file_saver=/Users/bijlipay/.pub-cache/hosted/pub.dev/file_saver-0.1.1/
+firebase_core=/Users/bijlipay/.pub-cache/hosted/pub.dev/firebase_core-3.15.1/
+firebase_core_web=/Users/bijlipay/.pub-cache/hosted/pub.dev/firebase_core_web-2.24.1/
+firebase_messaging=/Users/bijlipay/.pub-cache/hosted/pub.dev/firebase_messaging-15.2.9/
+firebase_messaging_web=/Users/bijlipay/.pub-cache/hosted/pub.dev/firebase_messaging_web-3.10.9/
 flutter_keyboard_visibility=/Users/bijlipay/.pub-cache/hosted/pub.dev/flutter_keyboard_visibility-5.4.1/
 flutter_keyboard_visibility_linux=/Users/bijlipay/.pub-cache/hosted/pub.dev/flutter_keyboard_visibility_linux-1.0.0/
 flutter_keyboard_visibility_macos=/Users/bijlipay/.pub-cache/hosted/pub.dev/flutter_keyboard_visibility_macos-1.0.0/

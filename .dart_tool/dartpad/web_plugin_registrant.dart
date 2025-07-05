@@ -8,6 +8,8 @@
 
 import 'package:file_picker/_internal/file_picker_web.dart';
 import 'package:file_saver/file_saver_web.dart';
+import 'package:firebase_core_web/firebase_core_web.dart';
+import 'package:firebase_messaging_web/firebase_messaging_web.dart';
 import 'package:flutter_keyboard_visibility_web/flutter_keyboard_visibility_web.dart';
 import 'package:open_file_web/open_file_web.dart';
 import 'package:permission_handler_html/permission_handler_html.dart';
@@ -20,6 +22,8 @@ void registerPlugins([final Registrar? pluginRegistrar]) {
   final Registrar registrar = pluginRegistrar ?? webPluginRegistrar;
   FilePickerWeb.registerWith(registrar);
   FileSaverWeb.registerWith(registrar);
+  FirebaseCoreWeb.registerWith(registrar);
+  FirebaseMessagingWeb.registerWith(registrar);
   FlutterKeyboardVisibilityPlugin.registerWith(registrar);
   OpenFilePlugin.registerWith(registrar);
   WebPermissionHandler.registerWith(registrar);

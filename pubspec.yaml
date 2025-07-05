@@ -49,6 +49,10 @@ dependencies:
   csv: ^5.1.1
   excel: ^4.0.2
   open_file: ^3.2.1
+  firebase_messaging: any
+  firebase_core: any
+
+
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
