@@ -2,18 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>1068949076400-j7ujsqkgbpnokvf70p18vdjh7a7uqvks.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyCtK_CKe2zd1YshLHnurKgFIAs2xjQiwjw</string>
+	<string>AIzaSyCYb3XBb2rOhf5UQh8F98Y5q4s_gayD4YY</string>
 	<key>GCM_SENDER_ID</key>
-	<string>140972508484</string>
+	<string>1068949076400</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.bijlipayVyapaar</string>
+	<string>com.bijlipay.vyapaar</string>
 	<key>PROJECT_ID</key>
-	<string>bijlipay-vyapaar</string>
+	<string>merchant-91b0e</string>
 	<key>STORAGE_BUCKET</key>
-	<string>bijlipay-vyapaar.firebasestorage.app</string>
+	<string>merchant-91b0e.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +27,8 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:140972508484:ios:31d2872c2d74ec46e68311</string>
+	<string>1:1068949076400:ios:e4b428768755d55b2dfe75</string>
+	<key>DATABASE_URL</key>
+	<string>https://merchant-91b0e.firebaseio.com</string>
 </dict>
 </plist>

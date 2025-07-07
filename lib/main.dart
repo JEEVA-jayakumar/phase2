@@ -101,11 +101,18 @@ class AppState {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  //  Initialize Firebase
+  await Firebase.initializeApp();
+
+  //  Initialize your Firebase Messaging logic
+  await FirebaseMessagingService().initialize();
+
   // Initialize app state (will always start fresh without persistence)
   final appState = AppState.instance;
 
   runApp(MyApp(initialLoginDone: appState.initialLoginDone));
 }
+
 
 class StaticQRChargeSlip extends StatefulWidget {
   final Map<String, dynamic> transactionData;

@@ -51,6 +51,8 @@ dependencies:
   open_file: ^3.2.1
   firebase_messaging: any
   firebase_core: any
+  flutter_local_notifications: any
+
 
 
 
