@@ -8,10 +8,12 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'createTicketScreenSettlement.dart';
-
+import 'package:share_plus/share_plus.dart'; // Add this import
+import 'package:permission_handler/permission_handler.dart';
 // Import your existing files
 import 'package:vyappar_application/main.dart';
 import 'login_screen.dart';
+import 'package:share_plus/share_plus.dart';
 
 Color customPurple = Color(0xFF61116A);
 
@@ -221,15 +223,21 @@ class _TransactionReportPageState extends State<TransactionReportPage>
 
   Future<void> _downloadFile(String url, String fileName, {bool isRedownload = false}) async {
     try {
-      // Get directory using file_picker
-      String? outputDir = await FilePicker.platform.getDirectoryPath();
-
-      if (outputDir == null) {
-        // User canceled the picker
+      // Check storage permission
+      var status = await Permission.storage.request();
+      if (!status.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Storage permission denied'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
         return;
       }
 
-      final String filePath = path.join(outputDir, fileName);
+      // Get application documents directory
+      final Directory appDocDir = await getApplicationDocumentsDirectory();
+      final String filePath = path.join(appDocDir.path, fileName);
 
       // Show loading dialog
       showDialog(
@@ -270,12 +278,8 @@ class _TransactionReportPageState extends State<TransactionReportPage>
           _downloadedFilePaths[url] = filePath;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('File downloaded successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        // Immediately open the file after download
+        _viewFile(url);
       } else {
         throw Exception('Failed to download file');
       }
@@ -292,7 +296,6 @@ class _TransactionReportPageState extends State<TransactionReportPage>
       );
     }
   }
-
   Future<void> _viewFile(String url) async {
     if (_downloadedFilePaths.containsKey(url)) {
       final String? filePath = _downloadedFilePaths[url];
@@ -328,6 +331,35 @@ class _TransactionReportPageState extends State<TransactionReportPage>
     }
   }
 
+  Future<void> _shareFile(String url) async {
+    if (_downloadedFilePaths.containsKey(url)) {
+      final String? filePath = _downloadedFilePaths[url];
+      if (filePath != null) {
+        try {
+          await Share.shareXFiles(
+            [XFile(filePath)], // Use XFile with shareXFiles
+            text: 'Transaction Report',
+            subject: 'Shared from Vyappar App',
+          );
+        } catch (e) {
+          print('Error sharing file: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error sharing file: ${e.toString()}'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('File not downloaded, please download first'),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+    }
+  }
   Future<void> _refreshData() async {
     if (_tabController.index == 0) {
       _transactions.clear();
@@ -597,47 +629,76 @@ class _TransactionReportPageState extends State<TransactionReportPage>
       itemBuilder: (BuildContext context) {
         final items = <PopupMenuItem<String>>[];
 
+        items.add(
+          PopupMenuItem(
+            value: 'download',
+            child: ListTile(
+              dense: true,
+              leading: Icon(isDownloaded ? Icons.refresh : Icons.download_outlined,
+                  color: customPurple),
+              title: Text(
+                isDownloaded ? 'Re-download' : 'Download',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        );
+
         if (isDownloaded) {
           items.add(
-              PopupMenuItem(
-                value: 'view',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.visibility_outlined, color: customPurple),
-                  title: Text(
-                    'View Report',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              )
-          );
-        }
-
-        items.add(
             PopupMenuItem(
-              value: 'download',
+              value: 'view',
               child: ListTile(
                 dense: true,
-                leading: Icon(isDownloaded ? Icons.refresh : Icons.download_outlined,
-                    color: customPurple),
+                leading: Icon(Icons.visibility_outlined, color: customPurple),
                 title: Text(
-                  isDownloaded ? 'Re-download' : 'Download',
+                  'View Report',
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 14,
                   ),
                 ),
               ),
-            )
-        );
+            ),
+          );
 
-        if (isDownloaded) {
+          items.add(
+            PopupMenuItem(
+              value: 'share',
+              child: ListTile(
+                dense: true,
+                leading: Icon(Icons.share_outlined, color: customPurple),
+                title: Text(
+                  'Share Report',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          );
 
+          // items.add(
+          //   PopupMenuItem(
+          //     value: 'open',
+          //     child: ListTile(
+          //       dense: true,
+          //       leading: Icon(Icons.open_in_new, color: customPurple),
+          //       title: Text(
+          //         'Open in External App',
+          //         style: TextStyle(
+          //           fontFamily: 'Montserrat',
+          //           fontSize: 14,
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // );
         }
-
 
         return items;
       },
@@ -650,7 +711,7 @@ class _TransactionReportPageState extends State<TransactionReportPage>
             _downloadFile(fileUrl, fileName, isRedownload: true);
             break;
           case 'share':
-          // Implement share functionality
+            _shareFile(fileUrl);
             break;
           case 'open':
             _launchFile(fileUrl);

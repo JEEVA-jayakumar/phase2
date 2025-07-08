@@ -33,7 +33,6 @@ class TransactionDetailsScreen extends StatefulWidget {
     required this.vpaList,
     this.transactionStatus,
     required this.transactionType,
-
   }) : super(key: key);
 
   @override
@@ -47,6 +46,7 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
   final GlobalKey _receiptKey = GlobalKey(); // Key for capturing the receipt
   String _currentTransactionStatus = 'SUCCESS';
   late final List<Widget> _pages;
+
   Future<http.Response> _handleResponse(Future<http.Response> apiCall) async {
     try {
       final response = await apiCall;
@@ -72,14 +72,25 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
       rethrow;
     }
   }
+
   @override
   void initState() {
     super.initState();
-    _transactionData = fetchTransactionDetails(widget.rrn, widget.authToken);
-    // Check if transaction is failed before proceeding
-    if (widget.transactionStatus?.toUpperCase() == 'FAILED') {
+
+    // Check for failed transactions or insufficient data
+    if (widget.transactionStatus?.toUpperCase() == 'FAILED' ||
+        widget.transactionStatus?.toUpperCase() == 'INSUFFICIENT_DATA') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showFailedTransactionMessage();
+      });
+      return;
+    }
+
+    // Check if transaction type indicates no records available
+    if (widget.transactionType.toUpperCase() == 'NO_RECORDS' ||
+        widget.transactionType.toUpperCase() == 'INSUFFICIENT_DATA') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showNoRecordsMessage();
       });
       return;
     }
@@ -120,29 +131,45 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
       ),
     ];
   }
-
-  void _showFailedTransactionMessage() {
+  void _showNoRecordsMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'Failed transactions do not have charge slips',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+          'No records available',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
+        backgroundColor: Colors.black,
+        duration: const Duration(seconds: 0),
         behavior: SnackBarBehavior.floating,
       ),
     );
 
-    // Navigate back after showing the message
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+  void _showFailedTransactionMessage() {
+    final message = widget.transactionStatus?.toUpperCase() == 'FAILED'
+        ? 'Failed transactions do not have charge slips'
+        : 'No records available';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) Navigator.of(context).pop();
     });
   }
 
-  // Get background color based on transaction status
   Color _getBackgroundColor() {
     switch (_currentTransactionStatus.toUpperCase()) {
       case 'SUCCESS':
@@ -185,18 +212,30 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     }
   }
 
+  int _countNAValues(Map<String, dynamic> data) {
+    int count = 0;
+    final keysToCheck = [
+      "txn_DATE", "txn_TIME", "id", "tid", "batch_NO", "invoice_NO",
+      "card_MASKED", "card_TYPE", "application_NAME", "application_ID",
+      "txn_CERTIFICATE", "tvr", "tsi", "rrn", "auth_CODE", "txn_AMOUNT_TOTAL"
+    ];
+
+    for (final key in keysToCheck) {
+      if (data[key] == "N/A") count++;
+    }
+    return count;
+  }
 
   Future<Map<String, dynamic>> fetchTransactionDetails(String rrn, String authToken) async {
     if (rrn.isEmpty) return {"error": "Invalid RRN provided"};
 
+    final String encodedRRN = Uri.encodeComponent(rrn);
+    final String apiUrl = "https://bportal.bijlipay.co.in:9027/txn/get-chargeslip-data/$encodedRRN/SALE";
+
+    print('Fetching details for RRN: $rrn');
+    print('Encoded URL: $apiUrl');
+
     try {
-      final String encodedRRN = Uri.encodeComponent(rrn);
-      final String apiUrl = "https://bportal.bijlipay.co.in:9027/txn/get-chargeslip-data/$encodedRRN/SALE";
-
-      print('Fetching details for RRN: $rrn');
-      print('Encoded URL: $apiUrl');
-
-      // Wrap the HTTP call with _handleResponse
       final response = await _handleResponse(
         http.get(
           Uri.parse(apiUrl),
@@ -209,8 +248,6 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
 
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
-
-      // Handle 401 Unauthorized - Navigate to login
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
@@ -236,14 +273,16 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
             "invoice_NO": "N/A",
             "auth_CODE": "N/A",
             "status": _currentTransactionStatus,
+            "bank_LOGO_ID": "BPL",
+            "merchant_NAME": "",
+            "location": "",
           };
 
           if (jsonResponse['data'] != null && jsonResponse['data'].isNotEmpty) {
             print('Valid data found: ${jsonResponse['data'][0]}');
 
-            // Map the API response fields to our expected fields
             final apiData = jsonResponse['data'][0];
-            return {
+            final transactionData = {
               ...defaultData,
               "id": apiData["mid"]?.toString() ?? "N/A",
               "tid": apiData["tid"]?.toString() ?? "N/A",
@@ -263,31 +302,103 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
               "txn_AMOUNT_TOTAL": apiData["txn_AMOUNT_TOTAL"]?.toString() ?? "0",
               "status": apiData["txn_STATUS"]?.toString() ?? "Success",
               "rawTxnType": apiData["txnType"]?.toString() ?? '',
+              "bank_LOGO_ID": apiData["bank_LOGO_ID"]?.toString() ?? "BPL",
+              "merchant_NAME": apiData["merchant_NAME"]?.toString() ?? "",
+              "location": apiData["location"]?.toString() ?? "",
             };
+
+            if (_countNAValues(transactionData) > 4) {
+              return {"error": "No records available"};
+            }
+
+            return transactionData;
           }
 
-          print('No data found, using default structure');
+
+          if (_countNAValues(defaultData) > 4) {
+            _showErrorAndNavigateBack("No records available");
+            return {};
+          }
           return defaultData;
+        } else {
+          _showErrorAndNavigateBack("Unexpected response status: ${jsonResponse['status']}");
+          return {};
         }
-        return {"error": "Unexpected response status: ${jsonResponse['status']}"};
+      } else {
+        _showErrorAndNavigateBack("API Error: ${response.statusCode}");
+        return {};
       }
-      return {"error": "API Error: ${response.statusCode}"};
     } catch (e) {
-      print('Error: $e');
-      return {"error": "Network Error: $e"};
+      _showErrorAndNavigateBack("Network Error: $e");
+      return {};
     }
   }
 
-  void _navigateToLogin() {
-    // Clear all previous routes and navigate to login
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/login', // Replace with your actual login route
-          (Route<dynamic> route) => false,
-    );
+  void _showErrorAndNavigateBack(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) Navigator.of(context).pop();
+      });
+    });
+  }
+  String _getBankLogoAsset(String bankId) {
+    switch (bankId.toUpperCase()) {
+      case "ADCB": return "assets/print_adcb.png";
+      case "IBB": return "assets/print_ibb.png";
+      case "APCB": return "assets/print_apcb.png";
+      case "AUB": return "assets/print_aub.png";
+      case "AXB": return "assets/print_axis_mono.png";
+      case "BCCB": return "assets/print_bccb.png";
+      case "BCUB": return "assets/print_bcub.png";
+      case "BMCB": return "assets/print_bmcb.png";
+      case "BPL": return "assets/print_bpl.png";
+      case "CGGB": return "assets/print_cggb.png";
+      case "CRGB": return "assets/print_crgb.png";
+      case "CSBB": return "assets/print_csbb.png";
+      case "DBS": return "assets/print_dbs.png";
+      case "DCB": return "assets/print_dcb.png";
+      case "EQB":
+      case "EQU": return "assets/print_img_equ.png";
+      case "FDB": return "assets/print_fdb.png";
+      case "GCB": return "assets/print_gcb.png";
+      case "IOB": return "assets/print_iob.png";
+      case "JCCB": return "assets/print_jccb.png";
+      case "JRGB": return "assets/print_jrgb.png";
+      case "KBL": return "assets/print_kbl.png";
+      case "KCUB": return "assets/print_kcub.png";
+      case "KVB": return "assets/print_kvb.png";
+      case "MNSB": return "assets/print_mnsb.png";
+      case "NRB": return "assets/print_nrb.png";
+      case "PPY": return "assets/print_ppq.png";
+      case "RBL": return "assets/print_rbl.png";
+      case "RNSB": return "assets/print_rnsb.png";
+      case "SBI": return "assets/print_sbi.png";
+      case "SCB": return "assets/print_scb.png";
+      case "SCUB": return "assets/print_scub.png";
+      case "SGB": return "assets/print_sgb.png";
+      case "TMCC": return "assets/print_tmcc.png";
+      case "UBI": return "assets/print_ubi.png";
+      case "VRK": return "assets/print_vrk.png";
+      case "WCL": return "assets/print_wcl.png";
+      default: return "assets/print_bpl.png";
+    }
   }
 
   Future<void> _shareReceiptText(Map<String, dynamic> data) async {
-    // Helper function to pad text for alignment
     String padLine(String left, String right, int totalWidth) {
       int leftLen = left.length;
       int rightLen = right.length;
@@ -296,7 +407,6 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
       return left + ' ' * spacesNeeded + right;
     }
 
-    // Helper function to center text within width
     String centerText(String text, int width) {
       if (text.length >= width) return text;
       int spaces = (width - text.length) ~/ 2;
@@ -314,7 +424,7 @@ ${padLine('DATE: ${_formatDate(data["txn_DATE"]?.toString() ?? "N/A")}', 'TIME: 
 ${padLine('MID: ${data["id"]?.toString() ?? "N/A"}', 'TID: ${data["tid"]?.toString() ?? "N/A"}', 39)}
 ${padLine('BATCH NO: ${data["batch_NO"]?.toString() ?? "N/A"}', 'INVOICE NO: ${data["invoice_NO"]?.toString() ?? "N/A"}', 39)}
 
-// ${padLine('AMOUNT:', '₹${_formatAmountString(data["txn_AMOUNT_TOTAL"]?.toString() ?? "0")}', 39)}
+${padLine('AMOUNT:', '₹${_formatAmountString(data["txn_AMOUNT_TOTAL"]?.toString() ?? "0")}', 39)}
 
 ═══════════════════════════════════════
                  SALE
@@ -352,7 +462,6 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
 
   Future<void> _shareReceiptImage() async {
     try {
-      // Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -373,10 +482,8 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
         ),
       );
 
-      // Wait a moment for the UI to settle
       await Future.delayed(const Duration(milliseconds: 500));
 
-      // Capture the receipt as image
       RenderRepaintBoundary boundary = _receiptKey.currentContext!
           .findRenderObject() as RenderRepaintBoundary;
 
@@ -384,27 +491,22 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-      // Save to temporary directory
       final tempDir = await getTemporaryDirectory();
       final file = await File('${tempDir.path}/receipt_${DateTime.now().millisecondsSinceEpoch}.png').create();
       await file.writeAsBytes(pngBytes);
 
-      // Close loading dialog
       Navigator.of(context).pop();
 
-      // Share the image
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Transaction Receipt - RRN: ${widget.rrn}',
         subject: 'Transaction Receipt',
       );
     } catch (e) {
-      // Close loading dialog if still open
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
 
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error sharing receipt: $e'),
@@ -414,7 +516,6 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
     }
   }
 
-  // Show share options dialog
   void _showShareOptions(Map<String, dynamic> data) {
     showModalBottomSheet(
       context: context,
@@ -459,7 +560,6 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
     );
   }
 
-  // Helper method to format amount as string
   String _formatAmountString(String amount) {
     try {
       if (amount.isEmpty) return "0.00";
@@ -574,24 +674,33 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
                       ),
                     );
                   }
-                  final errorMessage = snapshot.data?["error"];
-                  final hasError = snapshot.hasError || errorMessage != null;
 
-                  if (hasError) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text(
-                          "Error: ${errorMessage ??
-                              snapshot.error?.toString() ?? 'Unknown error'}",
-                          style: const TextStyle(
-                              color: Colors.red, fontSize: 16),
-                          textAlign: TextAlign.center,
+                  // Handle errors with SnackBar
+                  if (snapshot.hasError || (snapshot.data?.containsKey("error") ?? false)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            snapshot.data?["error"] ?? snapshot.error?.toString() ?? 'Unknown error',
+                            style: const TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                          behavior: SnackBarBehavior.floating,
                         ),
-                      ),
-                    );
+                      );
+
+                      // Navigate back after showing the error
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        if (mounted) Navigator.of(context).pop();
+                      });
+                    });
+
+                    // Return empty container since we're showing SnackBar and navigating back
+                    return Container();
                   }
 
+                  // Normal successful case
                   return SingleChildScrollView(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -603,6 +712,7 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
                             child: _buildReceiptCard(snapshot.data!),
                           ),
                           _buildCustomerCopyButton(),
+
                         ],
                       ),
                     ),
@@ -750,29 +860,37 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: Image.asset("assets/axis.png", height: 110)),
-              const Center(
+              Center(
+                child: Image.asset(
+                  _getBankLogoAsset(data["bank_LOGO_ID"]?.toString() ?? "BPL"),
+                  height: 110,
+                ),
+              ),
+              Center(
                 child: Text(
-                  "BIJLIPAY Skillworth Technologies Limited",
+                  data["merchant_NAME"] ?? "",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(height: 6),
-              const Center(
+              const SizedBox(height: 3),
+              Center(
                 child: Text(
-                  "S No7 GR FL GTB NGR DL",
+                  data["location"] ?? "",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 9),
               _transactionRowLeftRight("DATE", _formatDate(data["txn_DATE"]?.toString() ?? "N/A"), "TIME", _formatTime(data["txn_TIME"]?.toString() ?? "N/A")),
               _transactionRowLeftRight("MID", data["id"]?.toString() ?? "N/A",
                   "TID", data["tid"]?.toString() ?? "N/A"),
               _transactionRowLeftRight("BATCH NO", data["batch_NO"]?.toString() ?? "N/A",
                   "INVOICE NO", data["invoice_NO"]?.toString() ?? "N/A"),
-              // _transactionRowAmountLeftRight("AMOUNT", data["txn_AMOUNT_TOTAL"]?.toString() ?? "0"),
               const SizedBox(height: spacing),
               const Center(
                 child: Text(
@@ -830,7 +948,6 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
     );
   }
 
-  // Helper method for left-aligned rows
   Widget _transactionRowLeft(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -859,14 +976,12 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
     );
   }
 
-  // Helper method for left-right aligned rows (DATE-TIME, MID-TID, TVR-TSI)
   Widget _transactionRowLeftRight(String label1, String value1, String label2, String value2) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left side
           RichText(
             text: TextSpan(
               children: [
@@ -889,7 +1004,6 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
               ],
             ),
           ),
-          // Right side
           RichText(
             text: TextSpan(
               children: [
@@ -924,52 +1038,43 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
       DateTime parsedDate;
 
       if (date.contains('-')) {
-        // Handle YYYY-MM-DD or DD-MM-YYYY format
         List<String> parts = date.split('-');
         if (parts.length == 3) {
           if (parts[0].length == 4) {
-            // YYYY-MM-DD format
             parsedDate = DateTime.parse(date);
           } else {
-            // DD-MM-YYYY format
             parsedDate = DateTime(
-                int.parse(parts[2]), // year
-                int.parse(parts[1]), // month
-                int.parse(parts[0])  // day
+                int.parse(parts[2]),
+                int.parse(parts[1]),
+                int.parse(parts[0])
             );
           }
         } else {
           return date;
         }
       } else if (date.contains('/')) {
-        // Handle MM/DD/YYYY or DD/MM/YYYY format
         List<String> parts = date.split('/');
         if (parts.length == 3) {
-          // Assume MM/DD/YYYY format (American) if first part is month-like
           if (int.parse(parts[0]) > 12) {
-            // DD/MM/YYYY format
             parsedDate = DateTime(
-                int.parse(parts[2]), // year
-                int.parse(parts[1]), // month
-                int.parse(parts[0])  // day
+                int.parse(parts[2]),
+                int.parse(parts[1]),
+                int.parse(parts[0])
             );
           } else {
-            // MM/DD/YYYY format
             parsedDate = DateTime(
-                int.parse(parts[2]), // year
-                int.parse(parts[0]), // month
-                int.parse(parts[1])  // day
+                int.parse(parts[2]),
+                int.parse(parts[0]),
+                int.parse(parts[1])
             );
           }
         } else {
           return date;
         }
       } else {
-        // Try to parse as standard format
         parsedDate = DateTime.parse(date);
       }
 
-      // Format as DD Month YYYY (e.g., "15 January 2024")
       List<String> months = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
@@ -977,29 +1082,24 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
 
       return "${parsedDate.day} ${months[parsedDate.month - 1]} ${parsedDate.year}";
     } catch (e) {
-      // If parsing fails, return as is
       return date;
     }
   }
 
-// Add this new method for time formatting with AM/PM
   String _formatTime(String time) {
     if (time == "N/A" || time.isEmpty) return "N/A";
 
     try {
-      // Check if time already has AM/PM
       if (time.toUpperCase().contains('AM') || time.toUpperCase().contains('PM')) {
         return time;
       }
 
-      // Parse time in HH:MM:SS or HH:MM format
       List<String> timeParts = time.split(':');
       if (timeParts.length < 2) return time;
 
       int hour = int.parse(timeParts[0]);
       int minute = int.parse(timeParts[1]);
 
-      // Convert to 12-hour format with AM/PM
       String period = hour >= 12 ? 'PM' : 'AM';
       int displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
 
@@ -1009,63 +1109,60 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
     }
   }
 
-// Helper method for left-right aligned amount rows (title left, data right)
-Widget _transactionRowAmountLeftRight(String label, String amount) {
-return Padding(
-padding: const EdgeInsets.symmetric(vertical: 4.0),
-child: Row(
-mainAxisAlignment: MainAxisAlignment.spaceBetween,
-children: [
-// Left side - Label
-Text(
-'$label:',
-style: const TextStyle(
-fontSize: 16, // Bigger font size
-fontWeight: FontWeight.w700,
-color: Colors.black,
-),
-),
-// Right side - Amount
-Text(
-'₹${_formatAmountString(amount)}',
-style: const TextStyle(
-fontSize: 16, // Bigger font size
-fontWeight: FontWeight.w700,
-color: Colors.black,
-),
-),
-],
-),
-);
-}
+  Widget _transactionRowAmountLeftRight(String label, String amount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
+          ),
+          Text(
+            '₹${_formatAmountString(amount)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ReceiptEdgeClipper extends CustomClipper<Path> {
-@override
-Path getClip(Size size) {
-final path = Path();
-const edgeHeight = 10.0;
-const triangleWidth = 15.0;
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    const edgeHeight = 10.0;
+    const triangleWidth = 15.0;
 
-path.moveTo(0, edgeHeight);
-for (double x = 0; x < size.width; x += triangleWidth) {
-path.lineTo(x + triangleWidth / 2, 0);
-path.lineTo(x + triangleWidth, edgeHeight);
-}
+    path.moveTo(0, edgeHeight);
+    for (double x = 0; x < size.width; x += triangleWidth) {
+      path.lineTo(x + triangleWidth / 2, 0);
+      path.lineTo(x + triangleWidth, edgeHeight);
+    }
 
-path.lineTo(size.width, size.height - edgeHeight);
+    path.lineTo(size.width, size.height - edgeHeight);
 
-for (double x = size.width; x > 0; x -= triangleWidth) {
-path.lineTo(x - triangleWidth / 2, size.height);
-path.lineTo(x - triangleWidth, size.height - edgeHeight);
-}
+    for (double x = size.width; x > 0; x -= triangleWidth) {
+      path.lineTo(x - triangleWidth / 2, size.height);
+      path.lineTo(x - triangleWidth, size.height - edgeHeight);
+    }
 
-path.lineTo(0, edgeHeight);
-path.close();
+    path.lineTo(0, edgeHeight);
+    path.close();
 
-return path;
-}
+    return path;
+  }
 
-@override
-bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
