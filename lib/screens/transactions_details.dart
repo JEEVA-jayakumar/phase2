@@ -274,8 +274,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
             "auth_CODE": "N/A",
             "status": _currentTransactionStatus,
             "bank_LOGO_ID": "BPL",
-            "merchant_NAME": "",
-            "location": "",
+            "merchant_NAME": "merchantName",
+            "location": "location",
           };
 
           if (jsonResponse['data'] != null && jsonResponse['data'].isNotEmpty) {
@@ -303,8 +303,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
               "status": apiData["txn_STATUS"]?.toString() ?? "Success",
               "rawTxnType": apiData["txnType"]?.toString() ?? '',
               "bank_LOGO_ID": apiData["bank_LOGO_ID"]?.toString() ?? "BPL",
-              "merchant_NAME": apiData["merchant_NAME"]?.toString() ?? "",
-              "location": apiData["location"]?.toString() ?? "",
+              "merchant_NAME": apiData["merchant_NAME"]?.toString() ?? "merchantName",
+              "location": apiData["location"]?.toString() ?? "location",
             };
 
             if (_countNAValues(transactionData) > 4) {
@@ -371,8 +371,8 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
       case "CSBB": return "assets/print_csbb.png";
       case "DBS": return "assets/print_dbs.png";
       case "DCB": return "assets/print_dcb.png";
-      case "EQB":
-      case "EQU": return "assets/print_img_equ.png";
+      case "EQB": return "assets/print_eqb.png";
+      case "EQU": return "assets/print_equ_new.png";
       case "FDB": return "assets/print_fdb.png";
       case "GCB": return "assets/print_gcb.png";
       case "IOB": return "assets/print_iob.png";
@@ -398,67 +398,6 @@ class _TransactionDetailsScreenState extends State<TransactionDetailsScreen> {
     }
   }
 
-  Future<void> _shareReceiptText(Map<String, dynamic> data) async {
-    String padLine(String left, String right, int totalWidth) {
-      int leftLen = left.length;
-      int rightLen = right.length;
-      int spacesNeeded = totalWidth - leftLen - rightLen;
-      if (spacesNeeded <= 0) return '$left $right';
-      return left + ' ' * spacesNeeded + right;
-    }
-
-    String centerText(String text, int width) {
-      if (text.length >= width) return text;
-      int spaces = (width - text.length) ~/ 2;
-      return ' ' * spaces + text + ' ' * (width - text.length - spaces);
-    }
-
-    final String receiptText = '''
-═══════════════════════════════════════
-           BIJLIPAY
-    Skillworth Technologies Limited
-        S No7 GR FL GTB NGR DL
-═══════════════════════════════════════
-
-${padLine('DATE: ${_formatDate(data["txn_DATE"]?.toString() ?? "N/A")}', 'TIME: ${_formatTime(data["txn_TIME"]?.toString() ?? "N/A")}', 39)}
-${padLine('MID: ${data["id"]?.toString() ?? "N/A"}', 'TID: ${data["tid"]?.toString() ?? "N/A"}', 39)}
-${padLine('BATCH NO: ${data["batch_NO"]?.toString() ?? "N/A"}', 'INVOICE NO: ${data["invoice_NO"]?.toString() ?? "N/A"}', 39)}
-
-${padLine('AMOUNT:', '₹${_formatAmountString(data["txn_AMOUNT_TOTAL"]?.toString() ?? "0")}', 39)}
-
-═══════════════════════════════════════
-                 SALE
-───────────────────────────────────────
-
-CARD NO: ${data["card_MASKED"] ?? "N/A"}
-CARD Type: ${data["card_TYPE"] ?? "N/A"}
-APP Name: ${data["application_NAME"] ?? "N/A"}
-AID: ${data["application_ID"] ?? "N/A"}
-TC: ${data["txn_CERTIFICATE"] ?? "N/A"}
-${padLine('TVR: ${data["tvr"] ?? "N/A"}', 'TSI: ${data["tsi"] ?? "N/A"}', 39)}
-${padLine('RRN: ${data["rrn"] ?? "N/A"}', 'AUTH CODE: ${data["auth_CODE"] ?? "N/A"}', 39)}
-
-${padLine('AMOUNT:', '₹${_formatAmountString(data["txn_AMOUNT_TOTAL"]?.toString() ?? "0")}', 39)}
-
-───────────────────────────────────────
-            *PIN VERIFIED OK*
-           NO Signature Required
-───────────────────────────────────────
-
-I CONFIRM THE RECEIPT OF GOODS/CASH/SERVICES
-HERE WILL OBSERVE MY AGREEMENT WITH CARD ISSUER
-
-${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***", 39)}
-
-        Version-1.0.87 Powered by bijlipay
-═══════════════════════════════════════
-  ''';
-
-    await Share.share(
-      receiptText,
-      subject: 'Transaction Receipt - RRN: ${data["rrn"] ?? "N/A"}',
-    );
-  }
 
   Future<void> _shareReceiptImage() async {
     try {
@@ -535,15 +474,15 @@ ${centerText(_isCustomerCopy ? "*** CUSTOMER COPY ***" : "*** MERCHANT COPY ***"
               ),
             ),
             const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.text_fields, color: Colors.blue),
-              title: const Text('Share as Text'),
-              subtitle: const Text('Share receipt details as formatted text'),
-              onTap: () {
-                Navigator.pop(context);
-                _shareReceiptText(data);
-              },
-            ),
+            // ListTile(
+            //   leading: const Icon(Icons.text_fields, color: Colors.blue),
+            //   title: const Text('Share as Text'),
+            //   subtitle: const Text('Share receipt details as formatted text'),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     _shareReceiptText(data);
+            //   },
+            // ),
             ListTile(
               leading: const Icon(Icons.image, color: Colors.green),
               title: const Text('Share as Image'),

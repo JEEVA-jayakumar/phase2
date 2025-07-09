@@ -156,6 +156,7 @@ flutter:
     - assets/print_ubi.png
     - assets/print_vrk.png
     - assets/print_wcl.png
+    - assets/print_eqb.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
